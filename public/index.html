@@ -1,0 +1,686 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CSE Portfolio · Share Tracker & Calculator</title>
+<meta name="description" content="Track your Colombo Stock Exchange shares: live prices, break-even sell, dividends, news, fundamentals and technicals. Data stays in your browser.">
+<!-- Personal finance tool: keep it out of search engines. Remove to allow indexing. -->
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0B0F14">
+<meta name="color-scheme" content="dark light">
+<meta property="og:title" content="CSE Portfolio">
+<meta property="og:description" content="Share tracker · Buy/Sell calculator · Live CSE prices">
+<meta property="og:type" content="website">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml">
+<link rel="icon" href="assets/icons/icon-192.png" type="image/png" sizes="192x192">
+<link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Noto+Sans+Sinhala:wght@400;600&display=swap">
+<link rel="stylesheet" href="assets/css/styles.css">
+<!-- Sets the theme before first paint (no light/dark flash). -->
+<script src="assets/js/theme-init.js"></script>
+<script type="module" src="assets/js/main.js"></script>
+</head>
+<!-- `locked` hides the app until the user is signed in (removed by main.js). -->
+<body class="locked">
+<a class="skip-link" href="#main">Skip to content</a>
+
+<!-- Icon sprite (stroke icons, inherit currentColor) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-pie" viewBox="0 0 24 24"><path d="M21 12A9 9 0 1 1 12 3v9z"/><path d="M15 3.5A9 9 0 0 1 20.5 9H15z"/></symbol>
+    <symbol id="i-calc" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 12h.01M12 12h.01M16 12h.01M8 16h.01M12 16h.01M16 16h.01"/></symbol>
+    <symbol id="i-coins" viewBox="0 0 24 24"><circle cx="9" cy="9" r="6"/><path d="M15.7 9.3A6 6 0 1 1 9.3 15.7"/><path d="M9 6.5v5"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 6-6"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-news" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 9h6M7 13h10M7 16h10"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 19V5a2 2 0 0 1 2-2h14v16H6a2 2 0 0 0-2 2 2 2 0 0 0 2 2h14"/><path d="M9 7h7"/></symbol>
+    <symbol id="i-candle" viewBox="0 0 24 24"><path d="M7 3v4M7 17v4M17 3v6M17 15v6"/><rect x="5" y="7" width="4" height="10" rx="1"/><rect x="15" y="9" width="4" height="6" rx="1"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36L21 8"/><path d="M21 3v5h-5"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 13A9 9 0 1 1 11 3a7 7 0 0 0 10 10z"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+  </defs>
+</svg>
+
+
+<!-- ========== SIGN IN / REGISTER ========== -->
+<div class="auth-screen" id="authScreen" data-state="loading">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <img src="assets/icons/icon.svg" alt="" width="44" height="44">
+      <div>
+        <div class="brand-title">CSE Portfolio</div>
+        <div class="brand-sub">Share tracker · Buy/Sell calculator · Live prices</div>
+      </div>
+    </div>
+
+    <div class="auth-loading" aria-live="polite"><span class="status-dot load"></span> Loading…</div>
+
+    <div class="auth-body">
+      <div class="auth-tabs" role="tablist" aria-label="Account">
+        <button type="button" role="tab" class="auth-tab" data-auth-tab="login" aria-selected="true">Sign in</button>
+        <button type="button" role="tab" class="auth-tab" data-auth-tab="register" aria-selected="false">Create account</button>
+      </div>
+
+      <p class="auth-notice" id="authNotice" role="alert" hidden></p>
+
+      <form class="auth-form" id="loginForm" data-auth-panel="login" novalidate>
+        <div class="field"><label for="loginEmail">E-mail</label>
+          <input id="loginEmail" name="email" type="email" class="search full" autocomplete="username" required inputmode="email"></div>
+        <div class="field"><label for="loginPassword">Password</label>
+          <div class="pw-wrap"><input id="loginPassword" name="password" type="password" class="search full" autocomplete="current-password" required>
+            <button type="button" class="pw-toggle" aria-label="Show password"><svg class="ico" aria-hidden="true"><use href="#i-eye"/></svg></button></div></div>
+        <button class="btn primary full auth-submit" type="submit">Sign in</button>
+        <button class="link-btn auth-link" type="button" data-auth-tab="reset">Forgot password?</button>
+      </form>
+
+      <form class="auth-form" id="registerForm" data-auth-panel="register" novalidate hidden>
+        <div class="field"><label for="regName">Name <span class="t-muted">(optional)</span></label>
+          <input id="regName" name="name" type="text" class="search full" autocomplete="name" maxlength="60"></div>
+        <div class="field"><label for="regEmail">E-mail</label>
+          <input id="regEmail" name="email" type="email" class="search full" autocomplete="username" required inputmode="email"></div>
+        <div class="field"><label for="regPassword">Password <span class="t-muted">(min 8 characters)</span></label>
+          <div class="pw-wrap"><input id="regPassword" name="password" type="password" class="search full" autocomplete="new-password" minlength="8" required>
+            <button type="button" class="pw-toggle" aria-label="Show password"><svg class="ico" aria-hidden="true"><use href="#i-eye"/></svg></button></div></div>
+        <div class="field"><label for="regPassword2">Confirm password</label>
+          <input id="regPassword2" name="password2" type="password" class="search full" autocomplete="new-password" minlength="8" required></div>
+        <button class="btn primary full auth-submit" type="submit">Create account</button>
+      </form>
+
+      <form class="auth-form" id="resetForm" data-auth-panel="reset" novalidate hidden>
+        <p class="hint" style="margin:0 0 14px">Enter the <b>recovery code</b> you saved when you created your account, and choose a new password.</p>
+        <div class="field"><label for="resetEmail">E-mail</label>
+          <input id="resetEmail" name="email" type="email" class="search full" autocomplete="username" required inputmode="email"></div>
+        <div class="field"><label for="resetCode">Recovery code</label>
+          <input id="resetCode" name="code" type="text" class="search full mono" placeholder="XXXXX-XXXXX-XXXXX-XXXXX" autocomplete="off" spellcheck="false" required></div>
+        <div class="field"><label for="resetPassword">New password <span class="t-muted">(min 8 characters)</span></label>
+          <input id="resetPassword" name="password" type="password" class="search full" autocomplete="new-password" minlength="8" required></div>
+        <button class="btn primary full auth-submit" type="submit">Reset password</button>
+        <button class="link-btn auth-link" type="button" data-auth-tab="login">← Back to sign in</button>
+      </form>
+
+      <p class="auth-error" id="authError" role="alert" hidden></p>
+    </div>
+
+    <p class="auth-foot">Your portfolio is saved securely to your account and synced across your devices.</p>
+  </div>
+</div>
+
+<header class="app-header">
+  <div class="wrap header-inner">
+    <a class="brand" href="#portfolio" aria-label="CSE Portfolio home">
+      <img src="assets/icons/icon.svg" alt="" width="36" height="36">
+      <span>
+        <span class="brand-title">CSE Portfolio</span>
+        <span class="brand-sub">Share tracker · Buy/Sell calculator · Live prices</span>
+      </span>
+    </a>
+    <div class="header-actions">
+      <label class="chip" for="commissionRate" title="Buy & Sell commission %">
+        <span>Commission</span>
+        <input id="commissionRate" inputmode="decimal" autocomplete="off" value="1.12">
+        <span>%</span>
+      </label>
+      <button class="btn primary" id="refreshBtn" type="button" title="Update prices (R)">
+        <svg class="ico" aria-hidden="true"><use href="#i-refresh"/></svg><span>Update prices</span>
+      </button>
+      <span class="chip" id="priceStatus" role="status" aria-live="polite">
+        <span class="status-dot" id="statusDot"></span><span id="statusText">—</span>
+      </span>
+    </div>
+    <div class="header-icons">
+      <button class="icon-btn account-btn" id="accountBtn" type="button" aria-label="Account and settings" data-sync="ok">
+        <span id="accountInitial" aria-hidden="true">?</span>
+      </button>
+      <button class="icon-btn" id="themeBtn" type="button" aria-label="Switch to light theme" title="Theme (T)">
+        <svg class="ico" aria-hidden="true"><use href="#i-sun"/></svg>
+      </button>
+      <button class="icon-btn" id="settingsBtn" type="button" aria-label="Settings" title="Settings">
+        <svg class="ico" aria-hidden="true"><use href="#i-sliders"/></svg>
+      </button>
+    </div>
+  </div>
+  <!-- Market ticker: ASPI · S&P SL20 · status · turnover (filled by market.js) -->
+  <div class="ticker" id="marketStrip" aria-label="Market overview" hidden></div>
+</header>
+
+<nav class="tabs-wrap" aria-label="Sections">
+  <div class="wrap">
+    <div class="tabs" role="tablist" id="tabs">
+      <button class="tab" role="tab" id="tab-portfolio" data-view="portfolio" aria-controls="view-portfolio" type="button"><svg class="ico" aria-hidden="true"><use href="#i-pie"/></svg>Portfolio</button>
+      <button class="tab" role="tab" id="tab-calc" data-view="calc" aria-controls="view-calc" type="button"><svg class="ico" aria-hidden="true"><use href="#i-calc"/></svg>Calculator</button>
+      <button class="tab" role="tab" id="tab-div" data-view="div" aria-controls="view-div" type="button"><svg class="ico" aria-hidden="true"><use href="#i-coins"/></svg>Dividends</button>
+      <button class="tab" role="tab" id="tab-charts" data-view="charts" aria-controls="view-charts" type="button"><svg class="ico" aria-hidden="true"><use href="#i-chart"/></svg>Charts</button>
+      <button class="tab" role="tab" id="tab-history" data-view="history" aria-controls="view-history" type="button"><svg class="ico" aria-hidden="true"><use href="#i-clock"/></svg>History</button>
+      <button class="tab" role="tab" id="tab-news" data-view="news" aria-controls="view-news" type="button"><svg class="ico" aria-hidden="true"><use href="#i-news"/></svg>News</button>
+      <button class="tab" role="tab" id="tab-fund" data-view="fund" aria-controls="view-fund" type="button"><svg class="ico" aria-hidden="true"><use href="#i-book"/></svg>Fundamentals</button>
+      <button class="tab" role="tab" id="tab-tech" data-view="tech" aria-controls="view-tech" type="button"><svg class="ico" aria-hidden="true"><use href="#i-candle"/></svg>Technical</button>
+    </div>
+  </div>
+</nav>
+
+<main id="main" class="wrap" tabindex="-1">
+
+  <div class="banner" id="liveBanner" role="alert" hidden>
+    <div>
+      <b>Live data unavailable.</b>
+      <span id="liveBannerMsg">Live CSE data could not be loaded. Market Price manual type කරන්න, or try again in a moment.</span>
+    </div>
+    <button class="btn" type="button" id="bannerRetryBtn">↻ Try again</button>
+  </div>
+
+  <noscript><div class="banner">This app needs JavaScript enabled.</div></noscript>
+
+  <!-- ========== PORTFOLIO ========== -->
+  <section class="view" id="view-portfolio" role="tabpanel" aria-labelledby="tab-portfolio" hidden>
+    <div class="summary" id="summaryCards"></div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Holdings</h2>
+        <div class="panel-actions">
+          <button class="btn primary" id="importBtn" type="button" title="ATrade Excel / CSV">↑ ATrade upload</button>
+          <input type="file" id="importFile" hidden accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv">
+          <button class="btn ghost" id="exportBtn" type="button">↓ CSV</button>
+          <button class="btn" id="besBtn" type="button" title="Recalculate break-even sell from average price">B.E.S auto</button>
+        </div>
+      </div>
+      <div class="filter-bar">
+        <label class="sr-only" for="searchBox">Search holdings</label>
+        <input class="search" id="searchBox" placeholder="Search symbol…  ( / )" type="search" data-search>
+        <label class="sr-only" for="sortSelect">Sort holdings</label>
+        <select class="select" id="sortSelect">
+          <option value="default">Sort: Default</option>
+          <option value="gain">Gain high → low</option>
+          <option value="loss">Gain low → high</option>
+          <option value="alloc">Allocation %</option>
+          <option value="status">SELL first</option>
+          <option value="name">Symbol A–Z</option>
+        </select>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table sticky-first holdings-table">
+          <caption class="sr-only">Holdings – editable. Change a cell and press Enter or Tab to save.</caption>
+          <thead>
+            <tr>
+              <th scope="col">Security</th><th scope="col">Balance</th><th scope="col">Avg</th><th scope="col">B.E.S</th><th scope="col">Total Cost</th>
+              <th scope="col">Market</th><th scope="col">Mkt Value</th><th scope="col">Net</th><th scope="col">G/L</th><th scope="col">%</th>
+              <th scope="col">Alloc</th><th scope="col">Status</th><th scope="col"><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+      <div class="empty" id="emptyState" hidden>Share data නෑ. <strong>+ Share</strong> click කරලා පටන් ගන්න, or upload your ATrade file.</div>
+      <div class="toolbar">
+        <button class="btn primary" id="addBtn" type="button">+ Share එකක් දාමු</button>
+        <div class="save-note"><span class="d" aria-hidden="true"></span><span id="saveStatus">Saved</span></div>
+      </div>
+      <div class="legend">
+        <b>B.E.S</b> = Break Even Sell (commission ඇතුළුව). <b>SELL</b> = market ≥ B.E.S · <b>NEAR</b> = 1% ඇතුළත · <b>WAIT</b> = තව බලන්න.
+        Gold market price = live CSE data.
+      </div>
+    </div>
+
+    <div class="tip">
+      <b>ATrade:</b> Portfolio → Save/Excel download කරලා → <b>↑ ATrade upload</b> click කරලා file එක select කරන්න (auto update).<br>
+      <b>Your data</b> is saved to your account automatically and syncs to every device you sign in on.
+    </div>
+  </section>
+
+  <!-- ========== CALCULATOR ========== -->
+  <section class="view" id="view-calc" role="tabpanel" aria-labelledby="tab-calc" hidden>
+    <div class="calc-grid">
+      <div class="panel">
+        <h2 class="panel-title">Buy / Sell Calculator</h2>
+        <div class="calc-tabs" role="radiogroup" aria-label="Calculator mode">
+          <button class="calc-tab on-buy" id="cTabBuy" type="button" role="radio" aria-checked="true">🟢 BUY</button>
+          <button class="calc-tab" id="cTabSell" type="button" role="radio" aria-checked="false">🔴 SELL</button>
+        </div>
+        <div class="field">
+          <label for="cQty">Quantity (shares)</label>
+          <input id="cQty" type="number" min="0" step="1" value="100" inputmode="numeric">
+        </div>
+        <div class="field">
+          <label for="cPrice" id="cPriceLbl">Market Price (Rs)</label>
+          <input id="cPrice" type="number" min="0" step="0.01" value="25.00" inputmode="decimal">
+        </div>
+        <div class="res" id="cResults" aria-live="polite"></div>
+        <div class="be-box" id="cBe" hidden></div>
+      </div>
+      <div class="panel">
+        <h2 class="panel-title">Profit check (Sell)</h2>
+        <div class="field">
+          <label for="cBuyCost">ඔයාගේ මුළු Buy Cost (Rs)</label>
+          <input id="cBuyCost" type="number" min="0" step="0.01" placeholder="Buy කරද්දී ගිය මුළු මුදල" inputmode="decimal">
+        </div>
+        <div class="res" id="cPL" aria-live="polite"></div>
+        <div class="legend no-border">
+          <b>BUY:</b> Total = gross + commission<br>
+          <b>SELL:</b> Net = gross − commission<br>
+          Rate header එකේ change කරන්න පුළුවන් (default 1.12%).
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== DIVIDENDS ========== -->
+  <section class="view" id="view-div" role="tabpanel" aria-labelledby="tab-div" hidden>
+    <div class="tip">
+      <b>Seasonality calendar:</b> Month එකක් තෝරන්න → past years pattern එකෙන් <b>ඒ month එකේ dividend දෙන්න ඉඩ තියෙන companies</b> පේනවා (CSE announce වෙන්න කලින් hint).
+      මේක guarantee නෙවෙයි — history-based estimate විතරයි.
+      Full history: <a href="https://stockdividends.iamsupun.com/stocks/" target="_blank" rel="noopener">stockdividends.iamsupun.com</a> ·
+      Official: <a href="https://www.cse.lk/announcements/?category=CASH+DIVIDEND" target="_blank" rel="noopener">CSE cash dividends</a>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Share dividend research</h2>
+        <span class="chip small">Past pattern · likely months</span>
+      </div>
+      <form class="stock-picker" id="divSearchForm">
+        <label for="divSearchBox">Symbol / company</label>
+        <input class="search grow" id="divSearchBox" placeholder="e.g. SAMP, CTC, COMB, HNB…" type="search" data-search>
+        <button class="btn primary" type="submit">Analyse</button>
+      </form>
+      <div id="divSearchResult"><div class="empty">Symbol type කරලා <strong>Analyse</strong> — past dividend months + estimate පෙනෙනවා.</div></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Year overview · seasonality heat</h2>
+        <span class="chip small">Past pattern density</span>
+      </div>
+      <div class="year-heat" id="yearHeat"></div>
+      <div class="legend no-border">Click month → detail. Bar = how many names historically pay that month.</div>
+    </div>
+
+    <div class="panel" id="seasonPanel">
+      <div class="panel-head">
+        <h2>Month seasonality</h2>
+        <span class="chip small">Past pattern → likely names</span>
+      </div>
+      <div class="month-btns" id="monthBtns" role="group" aria-label="Select month"></div>
+      <div id="seasonList"></div>
+      <div class="legend">
+        <b class="t-pos">HIGH</b> = බොහෝ වසරවල ඒ month එකේ දුන් history ·
+        <b class="t-warn">MED</b> = සමහර වසර ·
+        <b class="t-muted">LOW</b> = අඩු frequency. Click symbol → history page.
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Live dividend-related (CSE announcements)</h2>
+        <button class="btn ghost" id="refreshDivLiveBtn" type="button">↻ Refresh</button>
+      </div>
+      <div id="liveDivList"><div class="empty">News / CSE load වුණාම dividend mentions මෙතන පේනවා. හෝ Refresh.</div></div>
+      <div class="legend">Official cash-dividend table: <a href="https://www.cse.lk/announcements/?category=CASH+DIVIDEND" target="_blank" rel="noopener">CSE Cash Dividend</a> · History: <a href="https://stockdividends.iamsupun.com/stocks/" target="_blank" rel="noopener">stockdividends.iamsupun.com</a></div>
+    </div>
+
+    <div class="summary" id="divSummary"></div>
+    <div class="calc-grid">
+      <div class="panel">
+        <h2 class="panel-title">Portfolio dividend setup</h2>
+        <div class="table-wrap">
+          <table class="data-table sticky-first" style="min-width:520px">
+            <thead>
+              <tr><th scope="col">Symbol</th><th scope="col">Balance</th><th scope="col">Avg DPS (Rs)</th><th scope="col">Typical month</th><th scope="col">Est. / year</th><th scope="col">Yield on cost</th></tr>
+            </thead>
+            <tbody id="divSetupBody"></tbody>
+          </table>
+        </div>
+        <div class="legend">Avg DPS = පසුගිය අවුරුදුවල average cash dividend per share. Typical month = සාමාන්‍යයෙන් XD/payment වෙන month (1–12).</div>
+      </div>
+      <div class="panel">
+        <h2 class="panel-title">Forecast · next 12 months</h2>
+        <div id="divForecast" class="res"></div>
+        <div class="legend">Forecast = past pattern එකෙන් approximate window. Official announcement එනකන් confirm නොවේ. Always check CSE.</div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Dividend event log</h2>
+        <button class="btn" id="addDivEventBtn" type="button">+ Event</button>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table sticky-first" style="min-width:760px">
+          <thead>
+            <tr><th scope="col">Symbol</th><th scope="col">DPS (Rs)</th><th scope="col">Type</th><th scope="col">XD date</th><th scope="col">Pay date</th><th scope="col">Status</th><th scope="col">Est. income</th><th scope="col"><span class="sr-only">Actions</span></th></tr>
+          </thead>
+          <tbody id="divEventBody"></tbody>
+        </table>
+      </div>
+      <div class="legend">Announced dividends මෙතන log කරන්න. Portfolio balance × DPS = ඔයාට ලැබෙන approximate amount.</div>
+    </div>
+  </section>
+
+  <!-- ========== CHARTS ========== -->
+  <section class="view" id="view-charts" role="tabpanel" aria-labelledby="tab-charts" hidden>
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Portfolio value over time</h2>
+        <button class="btn ghost" id="clearSnapBtn" type="button">Clear history</button>
+      </div>
+      <div class="chart-box" style="height:240px"><canvas id="valueChart" role="img" aria-label="Line chart of portfolio market value versus total cost over time"></canvas></div>
+      <div class="legend">Prices refresh වුණාම snapshot save වෙනවා (one per day, local). Trend බලන්න.</div>
+    </div>
+    <div class="charts">
+      <div class="panel">
+        <h2 class="panel-title">Gain / Loss by Share</h2>
+        <div class="chart-box"><canvas id="glChart" role="img" aria-label="Bar chart of gain or loss per holding"></canvas></div>
+      </div>
+      <div class="panel">
+        <h2 class="panel-title">Portfolio Allocation</h2>
+        <div class="chart-box"><canvas id="allocChart" role="img" aria-label="Doughnut chart of allocation by holding"></canvas></div>
+      </div>
+    </div>
+    <div class="charts">
+      <div class="panel">
+        <h2 class="panel-title">Sector allocation</h2>
+        <div class="chart-box"><canvas id="sectorChart" role="img" aria-label="Doughnut chart of allocation by sector"></canvas></div>
+      </div>
+      <div class="panel">
+        <h2 class="panel-title">Concentration</h2>
+        <div id="concBox" class="res"></div>
+        <div class="legend">Top holdings % of portfolio — concentration risk hint.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== HISTORY ========== -->
+  <section class="view" id="view-history" role="tabpanel" aria-labelledby="tab-history" hidden>
+    <div class="tip">
+      <b>Transaction log:</b> Buy/Sell record කරන්න → realized P/L track වෙනවා. Holdings auto-update (average-cost method).
+    </div>
+    <div class="summary" id="histSummary"></div>
+    <div class="panel">
+      <h2 class="panel-title">Add transaction</h2>
+      <form id="txForm" novalidate>
+        <div class="calc-grid">
+          <div>
+            <div class="field"><label for="txType">Type</label>
+              <select id="txType" class="select full"><option value="buy">BUY</option><option value="sell">SELL</option></select>
+            </div>
+            <div class="field"><label for="txSym">Symbol</label>
+              <input id="txSym" class="search full" placeholder="SAMP.N0000" autocomplete="off" list="txDatalist">
+              <datalist id="txDatalist"></datalist>
+            </div>
+            <div class="field"><label for="txQty">Quantity</label>
+              <input id="txQty" type="number" min="0" step="1" value="100" inputmode="numeric">
+            </div>
+          </div>
+          <div>
+            <div class="field"><label for="txPrice">Price (Rs)</label>
+              <input id="txPrice" type="number" min="0" step="0.01" value="0" inputmode="decimal">
+            </div>
+            <div class="field"><label for="txDate">Date</label>
+              <input id="txDate" type="date" class="search full">
+            </div>
+            <div class="field"><label for="txNote">Note (optional)</label>
+              <input id="txNote" class="search full" placeholder="optional" maxlength="200">
+            </div>
+          </div>
+        </div>
+        <button class="btn primary" id="txAddBtn" type="submit">+ Log transaction</button>
+      </form>
+    </div>
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Transaction history</h2>
+        <div class="panel-actions">
+          <button class="btn ghost" id="txExportBtn" type="button">↓ CSV</button>
+          <button class="btn ghost danger" id="txClearBtn" type="button">Clear all</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table" style="min-width:820px">
+          <thead>
+            <tr>
+              <th scope="col" class="left">Date</th><th scope="col" class="left">Type</th><th scope="col" class="left">Symbol</th>
+              <th scope="col">Qty</th><th scope="col">Price</th><th scope="col">Gross</th><th scope="col">Fee</th><th scope="col">Net</th><th scope="col">Realized</th>
+              <th scope="col" class="left">Note</th><th scope="col"><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody id="txBody"></tbody>
+        </table>
+      </div>
+      <div class="legend">SELL net − proportional cost basis = realized P/L (average-cost method). Commission rate header එකෙන්.</div>
+    </div>
+  </section>
+
+  <!-- ========== NEWS ========== -->
+  <section class="view" id="view-news" role="tabpanel" aria-labelledby="tab-news" hidden>
+    <div class="tip">
+      <b>Share ගන්න කලින් news බලන්න:</b> CSE official + <b>English &amp; Sinhala local media</b>
+      (EconomyNext, Daily FT, Daily Mirror, Sunday Times, LBO, The Island, Ada Derana, Hiru, News First, Lankadeepa, Dinamina, Mawbima).
+      Auto-refresh every 3 min while this tab is open. Your holdings highlight වෙනවා.
+    </div>
+    <div class="summary news-hero" id="newsHero"></div>
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Market news · decide with sources</h2>
+        <div class="panel-actions">
+          <button class="btn primary" id="newsRefreshBtn" type="button">↻ Refresh now</button>
+          <span class="chip" role="status" aria-live="polite"><span class="status-dot" id="newsDot"></span><span id="newsStatusText">—</span></span>
+        </div>
+      </div>
+      <div class="news-toolbar">
+        <div class="news-chips" id="newsChips" role="group" aria-label="Filter news">
+          <button type="button" class="news-chip on" data-nf="all" aria-pressed="true">All</button>
+          <button type="button" class="news-chip" data-nf="portfolio" aria-pressed="false">My holdings</button>
+          <button type="button" class="news-chip" data-nf="fin" aria-pressed="false">Financial results</button>
+          <button type="button" class="news-chip" data-nf="cse" aria-pressed="false">CSE official</button>
+          <button type="button" class="news-chip" data-nf="div" aria-pressed="false">Dividends</button>
+          <button type="button" class="news-chip" data-nf="media" aria-pressed="false">English media</button>
+          <button type="button" class="news-chip" data-nf="si" aria-pressed="false">සිංහල media</button>
+        </div>
+        <label class="sr-only" for="newsSearch">Search news</label>
+        <input class="search news-search" id="newsSearch" placeholder="Search company, keyword…" type="search" data-search>
+      </div>
+      <div class="news-list" id="newsList">
+        <div class="empty"><strong>Refresh now</strong> click කරන්න — CSE + English/Sinhala media news load වෙනවා.</div>
+      </div>
+      <div class="legend">
+        <b>Sources:</b> CSE Financial / Official · EconomyNext, FT, Mirror, Times, LBO, Island ·
+        <b>සිංහල:</b> Ada Derana, Hiru News, News First, Lankadeepa, Dinamina, Mawbima.
+        <b class="t-pos">Bullish</b> / <b class="t-neg">Bearish</b> = keyword signal only — not investment advice.
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== FUNDAMENTALS ========== -->
+  <section class="view" id="view-fund" role="tabpanel" aria-labelledby="tab-fund" hidden>
+    <div class="tip"><b>Live CSE · full market</b> — ඕනෑම listed share search කරලා fundamentals බලන්න (portfolio only නෙවෙයි). Price, market cap, beta, ranges, volumes, turnover.</div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Market today</h2>
+        <button class="btn ghost" id="moversRefreshBtn" type="button">↻ Refresh</button>
+      </div>
+      <div class="movers" id="moversBox"><div class="empty">Loading top gainers, losers and most active…</div></div>
+    </div>
+
+    <form class="stock-picker" id="fundForm">
+      <label for="fundSearch">Symbol</label>
+      <input class="search grow" id="fundSearch" list="fundDatalist" placeholder="Type symbol or company…" autocomplete="off" data-search>
+      <datalist id="fundDatalist"></datalist>
+      <label class="sr-only" for="fundSymbol">Pick from list</label>
+      <select id="fundSymbol" class="select"></select>
+      <button class="btn primary" id="fundLoadBtn" type="submit">Load</button>
+      <button class="btn ghost" id="fundRefreshSymBtn" type="button" title="Reload full CSE list">↻ List</button>
+      <span class="chip" id="fundStatus" role="status">—</span>
+    </form>
+    <div id="fundContent"><div class="empty">Symbol type/select කරලා <strong>Load</strong> — full market list එකෙන් ඕනෑම share.</div></div>
+  </section>
+
+  <!-- ========== TECHNICAL ========== -->
+  <section class="view" id="view-tech" role="tabpanel" aria-labelledby="tab-tech" hidden>
+    <div class="tip"><b>Live CSE + TradingView</b> — advanced chart (TV), 52-week position, pivots, volume, CSE daily chart. Symbol තෝරලා Load.</div>
+    <form class="stock-picker" id="techForm">
+      <label for="techSearch">Symbol</label>
+      <input class="search grow" id="techSearch" list="techDatalist" placeholder="Type any CSE symbol…" autocomplete="off" data-search>
+      <datalist id="techDatalist"></datalist>
+      <label class="sr-only" for="techSymbol">Pick from list</label>
+      <select id="techSymbol" class="select"></select>
+      <label class="sr-only" for="techPeriod">CSE chart period</label>
+      <select id="techPeriod" class="select" title="CSE chart period">
+        <option value="5" selected>Daily</option>
+        <option value="1">Intraday</option>
+        <option value="2">Weekly</option>
+        <option value="3">Monthly</option>
+      </select>
+      <label class="sr-only" for="tvInterval">TradingView interval</label>
+      <select id="tvInterval" class="select" title="TradingView interval">
+        <option value="D" selected>TV Daily</option>
+        <option value="60">TV 1H</option>
+        <option value="240">TV 4H</option>
+        <option value="W">TV Weekly</option>
+      </select>
+      <button class="btn primary" id="techLoadBtn" type="submit">Load</button>
+      <button class="btn ghost" id="techRefreshSymBtn" type="button">↻ List</button>
+      <span class="chip" id="techStatus" role="status">—</span>
+    </form>
+    <div id="tvWidgetWrap" class="panel flush" hidden>
+      <div class="panel-head pad">
+        <h2>TradingView · advanced</h2>
+        <a class="btn ghost" id="tvOpenLink" target="_blank" rel="noopener" href="https://www.tradingview.com/">Open on TV ↗</a>
+      </div>
+      <div id="tv_chart_container"></div>
+    </div>
+    <div id="techContent"><div class="empty">Symbol තෝරලා <strong>Load</strong> කරන්න — TradingView + CSE metrics.</div></div>
+  </section>
+</main>
+
+<footer class="app-footer">
+  <div class="wrap">
+    <p><b>Not investment advice.</b> Signals are rule-based hints; always confirm with the CSE and your broker.
+      Data: Colombo Stock Exchange, Google News, TradingView. Your portfolio is saved privately to your account.</p>
+    <p class="footer-links">
+      <button class="link-btn" type="button" id="helpBtn">Keyboard shortcuts (?)</button> ·
+      <button class="link-btn" type="button" data-open-settings>Backup &amp; settings</button> ·
+      <span id="appVersion">v3.0</span>
+    </p>
+  </div>
+</footer>
+
+<!-- ========== DIALOGS ========== -->
+<dialog class="dialog" id="settingsDialog" aria-labelledby="settingsTitle">
+  <form method="dialog" class="dialog-body">
+    <div class="dialog-head">
+      <h2 id="settingsTitle">Settings</h2>
+      <button class="icon-btn" value="close" aria-label="Close settings"><svg class="ico" aria-hidden="true"><use href="#i-x"/></svg></button>
+    </div>
+
+    <section class="dialog-section">
+      <h3>Account</h3>
+      <p class="acct-line">Signed in as <b id="acctEmail">—</b></p>
+      <p class="hint" id="syncState" role="status">—</p>
+      <div class="row-inline wrap-gap" style="margin-top:12px">
+        <button class="btn" type="button" id="syncNowBtn">↻ Sync now</button>
+        <button class="btn ghost" type="button" id="changePwBtn">Change password</button>
+        <button class="btn ghost" type="button" id="newCodeBtn">New recovery code</button>
+        <button class="btn ghost" type="button" id="signOutBtn">Sign out</button>
+      </div>
+    </section>
+
+    <section class="dialog-section">
+      <h3>Live data</h3>
+      <div class="row-inline">
+        <button class="btn" type="button" id="testApiBtn">Check connection</button>
+        <span id="testApiResult" class="hint" role="status">Checks that live CSE prices and news are reachable.</span>
+      </div>
+      <div class="field">
+        <label for="setRefresh">Auto-refresh prices</label>
+        <select id="setRefresh" class="select full">
+          <option value="60">Every 1 minute</option>
+          <option value="120">Every 2 minutes</option>
+          <option value="300">Every 5 minutes</option>
+          <option value="0">Off (manual only)</option>
+        </select>
+      </div>
+      <label class="check"><input type="checkbox" id="setMarketHours"> <span>Only auto-refresh during CSE trading hours (Mon–Fri, 09:30–14:30 Sri Lanka time)</span></label>
+      <label class="check"><input type="checkbox" id="setNotify"> <span>Browser notifications for SELL / NEAR signals</span></label>
+    </section>
+
+    <section class="dialog-section">
+      <h3>Your data</h3>
+      <p class="hint">Holdings, dividends, transactions and history are saved to your account and synced across your devices. A copy is kept in this browser so the app also works offline. You can still download a backup file any time.</p>
+      <div class="row-inline wrap-gap">
+        <button class="btn primary" type="button" id="backupExportBtn">↓ Export backup</button>
+        <button class="btn" type="button" id="backupImportBtn">↑ Import backup</button>
+        <input type="file" id="backupFile" accept="application/json,.json" hidden>
+        <button class="btn ghost danger" type="button" id="resetBtn">Clear portfolio</button>
+        <button class="btn ghost danger" type="button" id="deleteAcctBtn">Delete account</button>
+      </div>
+    </section>
+
+    <div class="dialog-actions">
+      <button class="btn primary" value="close">Done</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="dialog dialog-sm" id="promptDialog" aria-labelledby="promptTitle" aria-describedby="promptMsg">
+  <form method="dialog" class="dialog-body">
+    <h2 id="promptTitle">Confirm</h2>
+    <p id="promptMsg"></p>
+    <div class="dialog-actions" id="promptActions"></div>
+  </form>
+</dialog>
+
+<dialog class="dialog dialog-sm" id="helpDialog" aria-labelledby="helpTitle">
+  <form method="dialog" class="dialog-body">
+    <div class="dialog-head">
+      <h2 id="helpTitle">Keyboard shortcuts</h2>
+      <button class="icon-btn" value="close" aria-label="Close"><svg class="ico" aria-hidden="true"><use href="#i-x"/></svg></button>
+    </div>
+    <dl class="kbd-list">
+      <dt><kbd>1</kbd> – <kbd>8</kbd></dt><dd>Switch section</dd>
+      <dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>Move between tabs (when a tab is focused)</dd>
+      <dt><kbd>R</kbd></dt><dd>Update prices</dd>
+      <dt><kbd>/</kbd></dt><dd>Focus search in the current section</dd>
+      <dt><kbd>T</kbd></dt><dd>Toggle light / dark theme</dd>
+      <dt><kbd>?</kbd></dt><dd>Show this help</dd>
+      <dt><kbd>Esc</kbd></dt><dd>Close dialog</dd>
+    </dl>
+  </form>
+</dialog>
+
+<dialog class="dialog dialog-sm" id="recoveryDialog" aria-labelledby="recoveryTitle">
+  <form method="dialog" class="dialog-body">
+    <h2 id="recoveryTitle">Save your recovery code</h2>
+    <p>If you forget your password, this code is the <b>only way</b> to get back into your account. It is shown only once — write it down or download it now.</p>
+    <div class="recovery-code" id="recoveryCode">XXXXX-XXXXX-XXXXX-XXXXX</div>
+    <div class="row-inline wrap-gap">
+      <button class="btn" type="button" id="recoveryCopyBtn">Copy</button>
+      <button class="btn" type="button" id="recoveryDownloadBtn">↓ Download .txt</button>
+    </div>
+    <label class="check"><input type="checkbox" id="recoverySaved"> <span>I have saved my recovery code somewhere safe</span></label>
+    <div class="dialog-actions">
+      <button class="btn primary" value="ok" id="recoveryContinueBtn" disabled>Continue</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="dialog dialog-sm" id="formDialog" aria-labelledby="formTitle">
+  <form method="dialog" class="dialog-body" id="formDialogForm">
+    <h2 id="formTitle">Confirm</h2>
+    <p id="formMsg"></p>
+    <div id="formFields"></div>
+    <div class="dialog-actions">
+      <button class="btn ghost" value="cancel" formnovalidate>Cancel</button>
+      <button class="btn primary" value="ok" id="formSubmit">OK</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

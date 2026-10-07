@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="CSE Portfolio">
+  <rect width="64" height="64" rx="14" fill="#0B0F14"/>
+  <rect x="2" y="2" width="60" height="60" rx="12" fill="none" stroke="#D4AF37" stroke-opacity=".35" stroke-width="2"/>
+  <path d="M14 46h36" stroke="#2A3444" stroke-width="3" stroke-linecap="round"/>
+  <path d="M15 40l10-10 8 6 16-17" fill="none" stroke="#D4AF37" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="49" cy="19" r="4.5" fill="#2ECC9A"/>
+</svg>

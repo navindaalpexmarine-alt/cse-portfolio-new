@@ -1,0 +1,4 @@
+# Personal finance tool – keep it out of search engines.
+# Change to "Allow: /" if you want it indexed.
+User-agent: *
+Disallow: /

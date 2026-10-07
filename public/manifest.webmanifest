@@ -1,0 +1,24 @@
+{
+  "name": "CSE Portfolio · Share Tracker",
+  "short_name": "CSE Portfolio",
+  "description": "Track Colombo Stock Exchange shares: live prices, break-even sell, dividends, news, fundamentals and technicals.",
+  "id": "./",
+  "start_url": "./#portfolio",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0B0F14",
+  "theme_color": "#0B0F14",
+  "categories": ["finance", "productivity"],
+  "icons": [
+    { "src": "assets/icons/icon.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "assets/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "assets/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Calculator", "url": "./#calc" },
+    { "name": "News", "url": "./#news" },
+    { "name": "Dividends", "url": "./#div" }
+  ]
+}
