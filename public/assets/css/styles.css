@@ -432,6 +432,8 @@ input.cell.live { color: var(--gold); font-weight: 600; }
 .app-footer { border-top: 1px solid var(--line); padding: 20px 0 calc(24px + env(safe-area-inset-bottom)); color: var(--muted); font-size: 12px; line-height: 1.7; }
 .app-footer b { color: var(--ink); }
 .footer-links { margin-top: 6px; }
+.app-footer a { color: var(--gold); text-decoration: underline; }
+.app-footer a:hover { color: var(--ink); }
 
 /* ---------- Dialogs ---------- */
 .dialog {
