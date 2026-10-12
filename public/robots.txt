@@ -1,4 +1,6 @@
-# Personal finance tool – keep it out of search engines.
-# Change to "Allow: /" if you want it indexed.
+# Allow search engines to index the site (needed for AdSense review).
 User-agent: *
-Disallow: /
+Allow: /
+
+# Sitemap can be added later if you publish content pages.
+# Sitemap: https://cse-portfolio-new.vercel.app/sitemap.xml
