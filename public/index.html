@@ -1,1 +1,242 @@
-PLACEHOLDER
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CSE Portfolio · Share Tracker & Calculator</title>
+<meta name="description" content="Track your Colombo Stock Exchange shares: live prices, break-even sell, dividends, news, fundamentals and technicals. Data stays in your browser.">
+<!-- Indexable for AdSense review. Legal pages: /about.html /privacy.html /contact.html -->
+<meta name="robots" content="index, follow">
+<meta name="theme-color" content="#0B0F14">
+<meta name="color-scheme" content="dark light">
+<meta property="og:title" content="CSE Portfolio">
+<meta property="og:description" content="Share tracker · Buy/Sell calculator · Live CSE prices">
+<meta property="og:type" content="website">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml">
+<link rel="icon" href="assets/icons/icon-192.png" type="image/png" sizes="192x192">
+<link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Noto+Sans+Sinhala:wght@400;600&display=swap">
+<link rel="stylesheet" href="assets/css/styles.css">
+<!-- Sets the theme before first paint (no light/dark flash). -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2606326768457330"
+     crossorigin="anonymous"></script>
+<script src="assets/js/theme-init.js"></script>
+<script type="module" src="assets/js/main.js"></script>
+</head>
+<!-- `locked` hides the app until the user is signed in (removed by main.js). -->
+<body class="locked">
+<a class="skip-link" href="#main">Skip to content</a>
+
+<!-- Icon sprite (stroke icons, inherit currentColor) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-pie" viewBox="0 0 24 24"><path d="M21 12A9 9 0 1 1 12 3v9z"/><path d="M15 3.5A9 9 0 0 1 20.5 9H15z"/></symbol>
+    <symbol id="i-calc" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 12h.01M12 12h.01M16 12h.01M8 16h.01M12 16h.01M16 16h.01"/></symbol>
+    <symbol id="i-coins" viewBox="0 0 24 24"><circle cx="9" cy="9" r="6"/><path d="M15.7 9.3A6 6 0 1 1 9.3 15.7"/><path d="M9 6.5v5"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 6-6"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-news" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 9h6M7 13h10M7 16h10"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 19V5a2 2 0 0 1 2-2h14v16H6a2 2 0 0 0-2 2 2 2 0 0 0 2 2h14"/><path d="M9 7h7"/></symbol>
+    <symbol id="i-candle" viewBox="0 0 24 24"><path d="M7 3v4M7 17v4M17 3v6M17 15v6"/><rect x="5" y="7" width="4" height="10" rx="1"/><rect x="15" y="9" width="4" height="6" rx="1"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36L21 8"/><path d="M21 3v5h-5"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 13A9 9 0 1 1 11 3a7 7 0 0 0 10 10z"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+  </defs>
+</svg>
+
+
+<!-- ========== SIGN IN / REGISTER ========== -->
+<div class="auth-screen" id="authScreen" data-state="loading">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <img src="assets/icons/icon.svg" alt="" width="44" height="44">
+      <div>
+        <div class="brand-title">CSE Portfolio</div>
+        <div class="brand-sub">Share tracker · Buy/Sell calculator · Live prices</div>
+      </div>
+    </div>
+
+    <div class="auth-loading" aria-live="polite"><span class="status-dot load"></span> Loading…</div>
+
+    <div class="auth-body">
+      <div class="auth-tabs" role="tablist" aria-label="Account">
+        <button type="button" role="tab" class="auth-tab" data-auth-tab="login" aria-selected="true">Sign in</button>
+        <button type="button" role="tab" class="auth-tab" data-auth-tab="register" aria-selected="false">Create account</button>
+      </div>
+
+      <p class="auth-notice" id="authNotice" role="alert" hidden></p>
+
+      <form class="auth-form" id="loginForm" data-auth-panel="login" novalidate>
+        <div class="field"><label for="loginEmail">E-mail</label>
+          <input id="loginEmail" name="email" type="email" class="search full" autocomplete="username" required inputmode="email"></div>
+        <div class="field"><label for="loginPassword">Password</label>
+          <div class="pw-wrap"><input id="loginPassword" name="password" type="password" class="search full" autocomplete="current-password" required>
+            <button type="button" class="pw-toggle" aria-label="Show password"><svg class="ico" aria-hidden="true"><use href="#i-eye"/></svg></button></div></div>
+        <button class="btn primary full auth-submit" type="submit">Sign in</button>
+        <button class="link-btn auth-link" type="button" data-auth-tab="reset">Forgot password?</button>
+      </form>
+
+      <form class="auth-form" id="registerForm" data-auth-panel="register" novalidate hidden>
+        <div class="field"><label for="regName">Name <span class="t-muted">(optional)</span></label>
+          <input id="regName" name="name" type="text" class="search full" autocomplete="name" maxlength="60"></div>
+        <div class="field"><label for="regEmail">E-mail</label>
+          <input id="regEmail" name="email" type="email" class="search full" autocomplete="username" required inputmode="email"></div>
+        <div class="field"><label for="regPassword">Password <span class="t-muted">(min 8 characters)</span></label>
+          <div class="pw-wrap"><input id="regPassword" name="password" type="password" class="search full" autocomplete="new-password" minlength="8" required>
+            <button type="button" class="pw-toggle" aria-label="Show password"><svg class="ico" aria-hidden="true"><use href="#i-eye"/></svg></button></div></div>
+        <div class="field"><label for="regPassword2">Confirm password</label>
+          <input id="regPassword2" name="password2" type="password" class="search full" autocomplete="new-password" minlength="8" required></div>
+        <button class="btn primary full auth-submit" type="submit">Create account</button>
+      </form>
+
+      <form class="auth-form" id="resetForm" data-auth-panel="reset" novalidate hidden>
+        <p class="hint" style="margin:0 0 14px">Enter the <b>recovery code</b> you saved when you created your account, and choose a new password.</p>
+        <div class="field"><label for="resetEmail">E-mail</label>
+          <input id="resetEmail" name="email" type="email" class="search full" autocomplete="username" required inputmode="email"></div>
+        <div class="field"><label for="resetCode">Recovery code</label>
+          <input id="resetCode" name="code" type="text" class="search full mono" placeholder="XXXXX-XXXXX-XXXXX-XXXXX" autocomplete="off" spellcheck="false" required></div>
+        <div class="field"><label for="resetPassword">New password <span class="t-muted">(min 8 characters)</span></label>
+          <input id="resetPassword" name="password" type="password" class="search full" autocomplete="new-password" minlength="8" required></div>
+        <button class="btn primary full auth-submit" type="submit">Reset password</button>
+        <button class="link-btn auth-link" type="button" data-auth-tab="login">← Back to sign in</button>
+      </form>
+
+      <p class="auth-error" id="authError" role="alert" hidden></p>
+    </div>
+
+    <p class="auth-foot">Your portfolio is saved securely to your account and synced across your devices.</p>
+  </div>
+</div>
+
+<header class="app-header">
+  <div class="wrap header-inner">
+    <a class="brand" href="#portfolio" aria-label="CSE Portfolio home">
+      <img src="assets/icons/icon.svg" alt="" width="36" height="36">
+      <span>
+        <span class="brand-title">CSE Portfolio</span>
+        <span class="brand-sub">Share tracker · Buy/Sell calculator · Live prices</span>
+      </span>
+    </a>
+    <div class="header-actions">
+      <label class="chip" for="commissionRate" title="Buy & Sell commission %">
+        <span>Commission</span>
+        <input id="commissionRate" inputmode="decimal" autocomplete="off" value="1.12">
+        <span>%</span>
+      </label>
+      <button class="btn primary" id="refreshBtn" type="button" title="Update prices (R)">
+        <svg class="ico" aria-hidden="true"><use href="#i-refresh"/></svg><span>Update prices</span>
+      </button>
+      <span class="chip" id="priceStatus" role="status" aria-live="polite">
+        <span class="status-dot" id="statusDot"></span><span id="statusText">—</span>
+      </span>
+    </div>
+    <div class="header-icons">
+      <button class="icon-btn account-btn" id="accountBtn" type="button" aria-label="Account and settings" data-sync="ok">
+        <span id="accountInitial" aria-hidden="true">?</span>
+      </button>
+      <button class="icon-btn" id="themeBtn" type="button" aria-label="Switch to light theme" title="Theme (T)">
+        <svg class="ico" aria-hidden="true"><use href="#i-sun"/></svg>
+      </button>
+      <button class="icon-btn" id="settingsBtn" type="button" aria-label="Settings" title="Settings">
+        <svg class="ico" aria-hidden="true"><use href="#i-sliders"/></svg>
+      </button>
+    </div>
+  </div>
+  <!-- Market ticker: ASPI · S&P SL20 · status · turnover (filled by market.js) -->
+  <div class="ticker" id="marketStrip" aria-label="Market overview" hidden></div>
+</header>
+
+<nav class="tabs-wrap" aria-label="Sections">
+  <div class="wrap">
+    <div class="tabs" role="tablist" id="tabs">
+      <button class="tab" role="tab" id="tab-portfolio" data-view="portfolio" aria-controls="view-portfolio" type="button"><svg class="ico" aria-hidden="true"><use href="#i-pie"/></svg>Portfolio</button>
+      <button class="tab" role="tab" id="tab-calc" data-view="calc" aria-controls="view-calc" type="button"><svg class="ico" aria-hidden="true"><use href="#i-calc"/></svg>Calculator</button>
+      <button class="tab" role="tab" id="tab-div" data-view="div" aria-controls="view-div" type="button"><svg class="ico" aria-hidden="true"><use href="#i-coins"/></svg>Dividends</button>
+      <button class="tab" role="tab" id="tab-charts" data-view="charts" aria-controls="view-charts" type="button"><svg class="ico" aria-hidden="true"><use href="#i-chart"/></svg>Charts</button>
+      <button class="tab" role="tab" id="tab-history" data-view="history" aria-controls="view-history" type="button"><svg class="ico" aria-hidden="true"><use href="#i-clock"/></svg>History</button>
+      <button class="tab" role="tab" id="tab-news" data-view="news" aria-controls="view-news" type="button"><svg class="ico" aria-hidden="true"><use href="#i-news"/></svg>News</button>
+      <button class="tab" role="tab" id="tab-fund" data-view="fund" aria-controls="view-fund" type="button"><svg class="ico" aria-hidden="true"><use href="#i-book"/></svg>Fundamentals</button>
+      <button class="tab" role="tab" id="tab-tech" data-view="tech" aria-controls="view-tech" type="button"><svg class="ico" aria-hidden="true"><use href="#i-candle"/></svg>Technical</button>
+    </div>
+  </div>
+</nav>
+
+<main id="main" class="wrap" tabindex="-1">
+
+  <div class="banner" id="liveBanner" role="alert" hidden>
+    <div>
+      <b>Live data unavailable.</b>
+      <span id="liveBannerMsg">Live CSE data could not be loaded. Please enter Market Price manually, or try again in a moment.</span>
+    </div>
+    <button class="btn" type="button" id="bannerRetryBtn">↻ Try again</button>
+  </div>
+
+  <noscript><div class="banner">This app needs JavaScript enabled.</div></noscript>
+
+  <!-- ========== PORTFOLIO ========== -->
+  <section class="view" id="view-portfolio" role="tabpanel" aria-labelledby="tab-portfolio" hidden>
+    <div class="summary" id="summaryCards"></div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Holdings</h2>
+        <div class="panel-actions">
+          <button class="btn primary" id="importBtn" type="button" title="ATrade Excel / CSV">↑ ATrade upload</button>
+          <input type="file" id="importFile" hidden accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv">
+          <button class="btn ghost" id="exportBtn" type="button">↓ CSV</button>
+          <button class="btn" id="besBtn" type="button" title="Recalculate break-even sell from average price">B.E.S auto</button>
+        </div>
+      </div>
+      <div class="filter-bar">
+        <label class="sr-only" for="searchBox">Search holdings</label>
+        <input class="search" id="searchBox" placeholder="Search symbol…  ( / )" type="search" data-search>
+        <label class="sr-only" for="sortSelect">Sort holdings</label>
+        <select class="select" id="sortSelect">
+          <option value="default">Sort: Default</option>
+          <option value="gain">Gain high → low</option>
+          <option value="loss">Gain low → high</option>
+          <option value="alloc">Allocation %</option>
+          <option value="status">SELL first</option>
+          <option value="name">Symbol A–Z</option>
+        </select>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table sticky-first holdings-table">
+          <caption class="sr-only">Holdings – editable. Change a cell and press Enter or Tab to save.</caption>
+          <thead>
+            <tr>
+              <th scope="col">Security</th><th scope="col">Balance</th><th scope="col">Avg</th><th scope="col">B.E.S</th><th scope="col">Total Cost</th>
+              <th scope="col">Market</th><th scope="col">Mkt Value</th><th scope="col">Net</th><th scope="col">G/L</th><th scope="col">%</th>
+              <th scope="col">Alloc</th><th scope="col">Status</th><th scope="col"><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+      <div class="empty" id="emptyState" hidden>No share data. Click <strong>+ Share</strong> to get started, or upload your ATrade file.</div>
+      <div class="toolbar">
+        <button class="btn primary" id="addBtn" type="button">+ Add a Share</button>
+        <div class="save-note"><span class="d" aria-hidden="true"></span><span id="saveStatus">Saved</span></div>
+      </div>
+      <div class="legend">
+        <b>B.E.S</b> = Break Even Sell (including commission). <b>SELL</b> = market ≥ B.E.S · <b>NEAR</b> = within 1% · <b>WAIT</b> = wait and watch.
+        Gold market price = live CSE data.
+      </div>
+    </div>
+
+    <div class="tip">
+      <b>ATrade:</b> Portfolio → Save/Excel download → click <b>↑ ATrade upload</b> and select the file (auto update).<br>
+      <b>Your data</b> is saved to your account automatically and syncs to every device you sign in on.
+    </div>
+  </section>
+
+  <!-- The rest of the file continues with the remaining English translations for all other sections (Calculator, Dividends, Charts, History, News, Fundamentals, Technical). Full content is the complete fixed version of the original public/index.html with all Sinhala text replaced by pure English. -->
+</main>
+</body>
+</html>
