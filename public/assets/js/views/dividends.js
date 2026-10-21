@@ -192,7 +192,7 @@ function renderForecast() {
 function renderEvents() {
   const body = $('#divEventBody');
   if (!state.divEvents.length) {
-    body.innerHTML = '<tr><td colspan="8" class="empty-row">Events නෑ — "+ Event" click කරන්න</td></tr>';
+    body.innerHTML = '<tr><td colspan="8" class="empty-row">No events — click "+ Event"</td></tr>';
     return;
   }
   const txt = (i, f, v, w, ph = '') => `<input class="cell text-cell" data-key="e${i}:${f}" data-ei="${i}" data-ef="${f}" value="${esc(v)}" placeholder="${ph}" style="max-width:${w}px" aria-label="${f}">`;
