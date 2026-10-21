@@ -12,7 +12,7 @@ const AUTO_MS = 180000; // 3 min, matches the proxy's CDN cache
 const MEDIA_KINDS = ['google', 'en', 'ft', 'dm', 'st', 'is', 'lbo'];
 const KIND_LABEL = {
   fin: 'FINANCIAL', div: 'DIVIDEND', cse: 'CSE OFFICIAL', en: 'ECONOMYNEXT', ft: 'DAILY FT', dm: 'DAILY MIRROR',
-  st: 'SUNDAY TIMES', is: 'THE ISLAND', lbo: 'LBO', si: 'සිංහල MEDIA', google: 'LOCAL MEDIA',
+  st: 'SUNDAY TIMES', is: 'THE ISLAND', lbo: 'LBO', si: 'SINHALA MEDIA', google: 'LOCAL MEDIA',
 };
 const BULL = ['profit', 'growth', 'dividend', 'approval', 'expansion', 'record', 'surge', 'gain', 'upgrade', 'strong', 'rise', 'ලාභ', 'වර්ධන', 'ලාභාංශ', 'අනුමත', 'වාර්තා'];
 const BEAR = ['loss', 'decline', 'warning', 'alert', 'fine', 'drop', 'fall', 'downgrade', 'weak', 'suspend', 'slash', 'අලාභ', 'පහත', 'අනතුරු', 'දඬුවම'];
@@ -160,8 +160,8 @@ function renderList() {
   const rows = state.newsCache.filter((it) => matchesFilter(it, q));
   if (!rows.length) {
     $('#newsList').innerHTML = emptyHtml(state.newsCache.length
-      ? 'News නෑ මේ filter එකට. Chip change කරන්න.'
-      : '<strong>Refresh now</strong> click කරන්න — CSE + English/Sinhala media news load වෙනවා.');
+      ? 'No news for this filter. Change the chip.'
+      : 'Click <strong>Refresh now</strong> — CSE + English/Sinhala media news will load.');
     return;
   }
   $('#newsList').innerHTML = rows.slice(0, 80).map((it) => {
