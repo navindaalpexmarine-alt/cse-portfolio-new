@@ -276,8 +276,8 @@
   <!-- ========== DIVIDENDS ========== -->
   <section class="view" id="view-div" role="tabpanel" aria-labelledby="tab-div" hidden>
     <div class="tip">
-      <b>Seasonality calendar:</b> Month එකක් තෝරන්න → past years pattern එකෙන් <b>ඒ month එකේ dividend දෙන්න ඉඩ තියෙන companies</b> පේනවා (CSE announce වෙන්න කලින් hint).
-      මේක guarantee නෙවෙයි — history-based estimate විතරයි.
+      <b>Seasonality calendar:</b> Select a month → companies that may pay dividend in that month appear based on past years pattern (hint before CSE announcement).
+      This is not a guarantee — history-based estimate only.
       Full history: <a href="https://stockdividends.iamsupun.com/stocks/" target="_blank" rel="noopener">stockdividends.iamsupun.com</a> ·
       Official: <a href="https://www.cse.lk/announcements/?category=CASH+DIVIDEND" target="_blank" rel="noopener">CSE cash dividends</a>
     </div>
@@ -292,7 +292,7 @@
         <input class="search grow" id="divSearchBox" placeholder="e.g. SAMP, CTC, COMB, HNB…" type="search" data-search>
         <button class="btn primary" type="submit">Analyse</button>
       </form>
-      <div id="divSearchResult"><div class="empty">Symbol type කරලා <strong>Analyse</strong> — past dividend months + estimate පෙනෙනවා.</div></div>
+      <div id="divSearchResult"><div class="empty">Type a symbol and click <strong>Analyse</strong> — past dividend months + estimate will appear.</div></div>
     </div>
 
     <div class="panel">
@@ -312,9 +312,9 @@
       <div class="month-btns" id="monthBtns" role="group" aria-label="Select month"></div>
       <div id="seasonList"></div>
       <div class="legend">
-        <b class="t-pos">HIGH</b> = බොහෝ වසරවල ඒ month එකේ දුන් history ·
-        <b class="t-warn">MED</b> = සමහර වසර ·
-        <b class="t-muted">LOW</b> = අඩු frequency. Click symbol → history page.
+        <b class="t-pos">HIGH</b> = paid in that month in most years ·
+        <b class="t-warn">MED</b> = in some years ·
+        <b class="t-muted">LOW</b> = low frequency. Click symbol → history page.
       </div>
     </div>
 
@@ -323,7 +323,7 @@
         <h2>Live dividend-related (CSE announcements)</h2>
         <button class="btn ghost" id="refreshDivLiveBtn" type="button">↻ Refresh</button>
       </div>
-      <div id="liveDivList"><div class="empty">News / CSE load වුණාම dividend mentions මෙතන පේනවා. හෝ Refresh.</div></div>
+      <div id="liveDivList"><div class="empty">Dividend mentions appear here when News / CSE loads. Or Refresh.</div></div>
       <div class="legend">Official cash-dividend table: <a href="https://www.cse.lk/announcements/?category=CASH+DIVIDEND" target="_blank" rel="noopener">CSE Cash Dividend</a> · History: <a href="https://stockdividends.iamsupun.com/stocks/" target="_blank" rel="noopener">stockdividends.iamsupun.com</a></div>
     </div>
 
@@ -339,12 +339,12 @@
             <tbody id="divSetupBody"></tbody>
           </table>
         </div>
-        <div class="legend">Avg DPS = පසුගිය අවුරුදුවල average cash dividend per share. Typical month = සාමාන්‍යයෙන් XD/payment වෙන month (1–12).</div>
+        <div class="legend">Avg DPS = average cash dividend per share over past years. Typical month = usual XD/payment month (1–12).</div>
       </div>
       <div class="panel">
         <h2 class="panel-title">Forecast · next 12 months</h2>
         <div id="divForecast" class="res"></div>
-        <div class="legend">Forecast = past pattern එකෙන් approximate window. Official announcement එනකන් confirm නොවේ. Always check CSE.</div>
+        <div class="legend">Forecast = approximate window from past pattern. Not confirmed until official announcement. Always check CSE.</div>
       </div>
     </div>
     <div class="panel">
@@ -360,7 +360,7 @@
           <tbody id="divEventBody"></tbody>
         </table>
       </div>
-      <div class="legend">Announced dividends මෙතන log කරන්න. Portfolio balance × DPS = ඔයාට ලැබෙන approximate amount.</div>
+      <div class="legend">Log announced dividends here. Portfolio balance × DPS = approximate amount you receive.</div>
     </div>
   </section>
 
