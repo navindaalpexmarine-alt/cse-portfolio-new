@@ -25,12 +25,12 @@ export function render() {
     $('#cResults').innerHTML =
       row('Gross (qty × price)', `Rs ${fmt(gross)}`) +
       row(`Commission (${fmt(rate)}%)`, `+ Rs ${fmt(fee)}`, 'neg') +
-      row('මුළු Cost (ඔයාගෙන් යනවා)', `Rs ${fmt(total)}`, 'hi') +
+      row('Total Cost (you pay)', `Rs ${fmt(total)}`, 'hi') +
       row('Cost / share', `Rs ${fmt(cps)}`);
     be.hidden = false;
     be.innerHTML = `<div class="t">Break-even Sell Price</div><div class="p">Rs ${fmt(bePrice)}</div>
-      <div class="n">මේකට උඩින් විකුණුවොත් (sell commission එක්ක) loss නෑ.</div>`;
-    pl.innerHTML = row('SELL tab එකේ profit බලන්න', '—');
+      <div class="n">Sell above this (including sell commission) and you will not lose.</div>`;
+    pl.innerHTML = row('Check profit on the SELL tab', '—');
     return;
   }
 
@@ -38,13 +38,13 @@ export function render() {
   $('#cResults').innerHTML =
     row('Gross (qty × sell)', `Rs ${fmt(gross)}`) +
     row(`Commission (${fmt(rate)}%)`, `− Rs ${fmt(fee)}`, 'neg') +
-    row('Net (ඔයාට ලැබෙනවා)', `Rs ${fmt(net)}`, 'hi pos') +
+    row('Net (you receive)', `Rs ${fmt(net)}`, 'hi pos') +
     row('Net / share', `Rs ${fmt(qty > 0 ? net / qty : 0)}`);
   be.hidden = true;
 
   const buyCost = num($('#cBuyCost').value, NaN);
   if (!(buyCost > 0)) {
-    pl.innerHTML = row('Buy cost දැම්මොත් P/L පෙනෙනවා', '—');
+    pl.innerHTML = row('Enter buy cost to see P/L', '—');
     return;
   }
   const gl = net - buyCost;
