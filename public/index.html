@@ -222,17 +222,17 @@
       </div>
       <div class="empty" id="emptyState" hidden>No share data. Click <strong>+ Share</strong> to get started, or upload your ATrade file..</div>
       <div class="toolbar">
-        <button class="btn primary" id="addBtn" type="button">+ Share එකක් දාමු</button>
+        <button class="btn primary" id="addBtn" type="button">+ Add a Share</button>
         <div class="save-note"><span class="d" aria-hidden="true"></span><span id="saveStatus">Saved</span></div>
       </div>
       <div class="legend">
-        <b>B.E.S</b> = Break Even Sell (commission ඇතුළුව). <b>SELL</b> = market ≥ B.E.S · <b>NEAR</b> = 1% ඇතුළත · <b>WAIT</b> = තව බලන්න.
+        <b>B.E.S</b> = Break Even Sell (including commission). <b>SELL</b> = market ≥ B.E.S · <b>NEAR</b> = within 1% · <b>WAIT</b> = wait and watch.
         Gold market price = live CSE data.
       </div>
     </div>
 
     <div class="tip">
-      <b>ATrade:</b> Portfolio → Save/Excel download කරලා → <b>↑ ATrade upload</b> click කරලා file එක select කරන්න (auto update).<br>
+      <b>ATrade:</b> Portfolio → Save/Excel download → click <b>↑ ATrade upload</b> and select the file (auto update).<br>
       <b>Your data</b> is saved to your account automatically and syncs to every device you sign in on.
     </div>
   </section>
@@ -260,14 +260,14 @@
       <div class="panel">
         <h2 class="panel-title">Profit check (Sell)</h2>
         <div class="field">
-          <label for="cBuyCost">ඔයාගේ මුළු Buy Cost (Rs)</label>
-          <input id="cBuyCost" type="number" min="0" step="0.01" placeholder="Buy කරද්දී ගිය මුළු මුදල" inputmode="decimal">
+          <label for="cBuyCost">Your Total Buy Cost (Rs)</label>
+          <input id="cBuyCost" type="number" min="0" step="0.01" placeholder="Total amount paid when buying" inputmode="decimal">
         </div>
         <div class="res" id="cPL" aria-live="polite"></div>
         <div class="legend no-border">
           <b>BUY:</b> Total = gross + commission<br>
           <b>SELL:</b> Net = gross − commission<br>
-          Rate header එකේ change කරන්න පුළුවන් (default 1.12%).
+          You can change it in the Rate header (default 1.12%).
         </div>
       </div>
     </div>
@@ -482,7 +482,7 @@
           <button type="button" class="news-chip" data-nf="cse" aria-pressed="false">CSE official</button>
           <button type="button" class="news-chip" data-nf="div" aria-pressed="false">Dividends</button>
           <button type="button" class="news-chip" data-nf="media" aria-pressed="false">English media</button>
-          <button type="button" class="news-chip" data-nf="si" aria-pressed="false">සිංහල media</button>
+          <button type="button" class="news-chip" data-nf="si" aria-pressed="false">Sinhala media</button>
         </div>
         <label class="sr-only" for="newsSearch">Search news</label>
         <input class="search news-search" id="newsSearch" placeholder="Search company, keyword…" type="search" data-search>
@@ -492,7 +492,7 @@
       </div>
       <div class="legend">
         <b>Sources:</b> CSE Financial / Official · EconomyNext, FT, Mirror, Times, LBO, Island ·
-        <b>සිංහල:</b> Ada Derana, Hiru News, News First, Lankadeepa, Dinamina, Mawbima.
+        <b>Sinhala:</b> Ada Derana, Hiru News, News First, Lankadeepa, Dinamina, Mawbima.
         <b class="t-pos">Bullish</b> / <b class="t-neg">Bearish</b> = keyword signal only — not investment advice.
       </div>
     </div>
