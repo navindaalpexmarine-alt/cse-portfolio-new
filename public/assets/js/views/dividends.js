@@ -21,14 +21,14 @@ const CSE_DIV_URL = 'https://www.cse.lk/announcements/?category=CASH+DIVIDEND';
 function analyse(raw) {
   const box = $('#divSearchResult');
   const q = String(raw || '').trim().toUpperCase().replace(/\.N0000|\.X0000|\.N|\.X/g, '');
-  if (!q) { box.innerHTML = emptyHtml('Symbol type කරන්න'); return; }
+  if (!q) { box.innerHTML = emptyHtml('Type a symbol'); return; }
 
   let key = null, prof = null;
   if (DIV_PROFILE[q]) { key = q; prof = DIV_PROFILE[q]; } else {
     const hits = Object.entries(DIV_PROFILE).filter(([k, v]) => k.includes(q) || (v.name || '').toUpperCase().includes(q));
     if (hits.length === 1) [[key, prof]] = hits;
     else if (hits.length > 1) {
-      box.innerHTML = emptyHtml(`ගැලපෙන symbols: ${hits.map(([k]) => `<button type="button" class="link-btn" data-analyse="${esc(k)}">${esc(k)}</button>`).join(', ')} — එකක් තෝරන්න`);
+      box.innerHTML = emptyHtml(`Matching symbols: ${hits.map(([k]) => `<button type="button" class="link-btn" data-analyse="${esc(k)}">${esc(k)}</button>`).join(', ')} — pick one`);
       return;
     }
   }
@@ -46,7 +46,7 @@ function analyse(raw) {
 
   if (!prof) {
     box.innerHTML = `<div class="tip" style="margin:0">
-      <p style="margin-bottom:10px"><b>${esc(q)}</b> — built-in pattern data නෑ. Full cash-dividend history:</p>
+      <p style="margin-bottom:10px"><b>${esc(q)}</b> — no built-in pattern data. Full cash-dividend history:</p>
       <a class="btn primary" target="_blank" rel="noopener" href="${historyUrl(q)}">Open history → ${esc(q)}</a>
       <a class="btn ghost" target="_blank" rel="noopener" href="${CSE_DIV_URL}">CSE cash dividends</a>
     </div>`;
@@ -81,7 +81,7 @@ function analyse(raw) {
       <a class="btn ghost" target="_blank" rel="noopener" href="${CSE_DIV_URL}">CSE cash dividends</a>
       <button class="btn ghost" type="button" data-apply-month="${esc(key)}" data-month="${months[0] || 0}">Apply typical month → portfolio</button>
     </div>
-    <div class="legend">මේ analysis එක history pattern මත පදනම් — guarantee නෙවෙයි. Official XD/announcement CSE එකෙන් confirm කරන්න.</div>`;
+    <div class="legend">This analysis is based on history patterns — not a guarantee. Confirm official XD/announcement on CSE.</div>`;
 }
 
 function applyMonth(sym, month) {
@@ -89,7 +89,7 @@ function applyMonth(sym, month) {
   state.holdings.forEach((h) => {
     if (baseSym(h.name) === sym) { if (!h.divMonth) h.divMonth = month; n++; }
   });
-  if (n) { commit('holdings'); toast(`Typical month ${MONTHS[month]} → ${n} holding(s)`); } else toast('Portfolio එකේ ඒ symbol නෑ — setup table එකේ manually දාන්න');
+  if (n) { commit('holdings'); toast(`Typical month ${MONTHS[month]} → ${n} holding(s)`); } else toast('That symbol is not in your portfolio — add it manually in the setup table');
 }
 
 /* ---------- seasonality ---------- */
@@ -111,10 +111,10 @@ function renderSeasonality() {
     `<button type="button" class="btn ${i + 1 === selectedMonth ? 'primary' : 'ghost'}" data-month="${i + 1}" aria-pressed="${i + 1 === selectedMonth}">${name}</button>`).join('');
 
   const rows = [...(SEASON[selectedMonth] || [])].sort((a, b) => STRENGTH_ORDER[a[3]] - STRENGTH_ORDER[b[3]]);
-  if (!rows.length) { $('#seasonList').innerHTML = emptyHtml('මේ month එකට pattern data නෑ'); return; }
+  if (!rows.length) { $('#seasonList').innerHTML = emptyHtml('No pattern data for this month'); return; }
   const mine = new Set(state.holdings.map((h) => baseSym(h.name)));
   $('#seasonList').innerHTML = `
-    <p class="hint" style="margin:0 0 10px"><b style="color:var(--ink)">${MONTHS[selectedMonth]}</b> — past pattern එකෙන් likely dividend companies (${rows.length})</p>
+    <p class="hint" style="margin:0 0 10px"><b style="color:var(--ink)">${MONTHS[selectedMonth]}</b> — likely dividend companies from past pattern (${rows.length})</p>
     <div class="table-wrap"><table class="data-table sticky-first" style="min-width:600px">
       <thead><tr><th scope="col">Symbol</th><th scope="col" class="left">Company</th><th scope="col">Pattern</th><th scope="col" class="left">Note</th><th scope="col"><span class="sr-only">Link</span></th></tr></thead>
       <tbody>${rows.map(([sym, name, note, str]) => `<tr>
@@ -133,7 +133,7 @@ function renderLiveDividends() {
   const el = $('#liveDivList');
   const rows = state.newsCache.filter((it) => it.kind === 'div' || /dividend|xd date|x-div|cash dividend|interim dividend|final dividend|ලාභාංශ/i.test(`${it.title} ${it.source}`)).slice(0, 25);
   if (!rows.length) {
-    el.innerHTML = emptyHtml(state.newsCache.length ? 'Dividend-related announcements තවම නෑ.' : 'News load වෙලා නෑ — <strong>↻ Refresh</strong> click කරන්න.');
+    el.innerHTML = emptyHtml(state.newsCache.length ? 'No dividend-related announcements yet.' : 'News not loaded yet — click <strong>↻ Refresh</strong>.');
     return;
   }
   const mine = new Set(state.holdings.map((h) => baseSym(h.name)).filter(Boolean));
@@ -170,7 +170,7 @@ function renderSetup() {
       <td class="t-gold"><b>Rs ${fmt(est)}</b></td>
       <td class="${yoc > 0 ? 't-pos' : 't-muted'}">${yoc ? fmtPct(yoc) : '—'}</td>
     </tr>`;
-  }).join('') || '<tr><td colspan="6" class="empty-row">Portfolio එකේ shares නෑ</td></tr>';
+  }).join('') || '<tr><td colspan="6" class="empty-row">No shares in portfolio</td></tr>';
   renderPreservingFocus($('#divSetupBody'), html);
   return totalEst;
 }
@@ -186,7 +186,7 @@ function renderForecast() {
     .sort((a, b) => a.year * 12 + a.month - (b.year * 12 + b.month));
   $('#divForecast').innerHTML = items.length
     ? items.map((it) => `<div class="res-row"><span class="l"><b>${esc(it.name)}</b> · ~${MONTHS[it.month]} ${it.year}</span><span class="v t-pos">~ Rs ${fmt(it.amt)}</span></div>`).join('')
-    : '<div class="res-row"><span class="l">Avg DPS + typical month දැම්මොත් forecast පෙනෙනවා</span><span class="v">—</span></div>';
+    : '<div class="res-row"><span class="l">Add Avg DPS + typical month to see the forecast</span><span class="v">—</span></div>';
 }
 
 function renderEvents() {
