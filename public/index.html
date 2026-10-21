@@ -372,7 +372,7 @@
         <button class="btn ghost" id="clearSnapBtn" type="button">Clear history</button>
       </div>
       <div class="chart-box" style="height:240px"><canvas id="valueChart" role="img" aria-label="Line chart of portfolio market value versus total cost over time"></canvas></div>
-      <div class="legend">Prices refresh වුණාම snapshot save වෙනවා (one per day, local). Trend බලන්න.</div>
+      <div class="legend">Snapshot is saved when prices refresh (one per day, local). View trend.</div>
     </div>
     <div class="charts">
       <div class="panel">
@@ -400,7 +400,7 @@
   <!-- ========== HISTORY ========== -->
   <section class="view" id="view-history" role="tabpanel" aria-labelledby="tab-history" hidden>
     <div class="tip">
-      <b>Transaction log:</b> Buy/Sell record කරන්න → realized P/L track වෙනවා. Holdings auto-update (average-cost method).
+      <b>Transaction log:</b> Record Buy/Sell → realized P/L is tracked. Holdings auto-update (average-cost method).
     </div>
     <div class="summary" id="histSummary"></div>
     <div class="panel">
@@ -454,16 +454,16 @@
           <tbody id="txBody"></tbody>
         </table>
       </div>
-      <div class="legend">SELL net − proportional cost basis = realized P/L (average-cost method). Commission rate header එකෙන්.</div>
+      <div class="legend">SELL net − proportional cost basis = realized P/L (average-cost method). From Commission rate header.</div>
     </div>
   </section>
 
   <!-- ========== NEWS ========== -->
   <section class="view" id="view-news" role="tabpanel" aria-labelledby="tab-news" hidden>
     <div class="tip">
-      <b>Share ගන්න කලින් news බලන්න:</b> CSE official + <b>English &amp; Sinhala local media</b>
+      <b>Check news before buying shares:</b> CSE official + <b>English &amp; Sinhala local media</b>
       (EconomyNext, Daily FT, Daily Mirror, Sunday Times, LBO, The Island, Ada Derana, Hiru, News First, Lankadeepa, Dinamina, Mawbima).
-      Auto-refresh every 3 min while this tab is open. Your holdings highlight වෙනවා.
+      Auto-refresh every 3 min while this tab is open. Your holdings are highlighted.
     </div>
     <div class="summary news-hero" id="newsHero"></div>
     <div class="panel">
@@ -488,7 +488,7 @@
         <input class="search news-search" id="newsSearch" placeholder="Search company, keyword…" type="search" data-search>
       </div>
       <div class="news-list" id="newsList">
-        <div class="empty"><strong>Refresh now</strong> click කරන්න — CSE + English/Sinhala media news load වෙනවා.</div>
+        <div class="empty">Click <strong>Refresh now</strong> — CSE + English/Sinhala media news will load.</div>
       </div>
       <div class="legend">
         <b>Sources:</b> CSE Financial / Official · EconomyNext, FT, Mirror, Times, LBO, Island ·
@@ -500,7 +500,7 @@
 
   <!-- ========== FUNDAMENTALS ========== -->
   <section class="view" id="view-fund" role="tabpanel" aria-labelledby="tab-fund" hidden>
-    <div class="tip"><b>Live CSE · full market</b> — ඕනෑම listed share search කරලා fundamentals බලන්න (portfolio only නෙවෙයි). Price, market cap, beta, ranges, volumes, turnover.</div>
+    <div class="tip"><b>Live CSE · full market</b> — Search any listed share to view fundamentals (not only portfolio). Price, market cap, beta, ranges, volumes, turnover.</div>
 
     <div class="panel">
       <div class="panel-head">
@@ -520,12 +520,12 @@
       <button class="btn ghost" id="fundRefreshSymBtn" type="button" title="Reload full CSE list">↻ List</button>
       <span class="chip" id="fundStatus" role="status">—</span>
     </form>
-    <div id="fundContent"><div class="empty">Symbol type/select කරලා <strong>Load</strong> — full market list එකෙන් ඕනෑම share.</div></div>
+    <div id="fundContent"><div class="empty">Type or select a symbol and click <strong>Load</strong> — any share from the full market list.</div></div>
   </section>
 
   <!-- ========== TECHNICAL ========== -->
   <section class="view" id="view-tech" role="tabpanel" aria-labelledby="tab-tech" hidden>
-    <div class="tip"><b>Live CSE + TradingView</b> — advanced chart (TV), 52-week position, pivots, volume, CSE daily chart. Symbol තෝරලා Load.</div>
+    <div class="tip"><b>Live CSE + TradingView</b> — advanced chart (TV), 52-week position, pivots, volume, CSE daily chart. Select a symbol and Load.</div>
     <form class="stock-picker" id="techForm">
       <label for="techSearch">Symbol</label>
       <input class="search grow" id="techSearch" list="techDatalist" placeholder="Type any CSE symbol…" autocomplete="off" data-search>
@@ -557,7 +557,7 @@
       </div>
       <div id="tv_chart_container"></div>
     </div>
-    <div id="techContent"><div class="empty">Symbol තෝරලා <strong>Load</strong> කරන්න — TradingView + CSE metrics.</div></div>
+    <div id="techContent"><div class="empty">Select a symbol and click <strong>Load</strong> — TradingView + CSE metrics.</div></div>
   </section>
 </main>
 
