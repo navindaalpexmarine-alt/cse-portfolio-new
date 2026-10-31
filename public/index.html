@@ -27,8 +27,8 @@
 <script src="assets/js/theme-init.js"></script>
 <script type="module" src="assets/js/main.js"></script>
 </head>
-<!-- `locked` hides the app until the user is signed in (removed by main.js). -->
-<body class="locked">
+<!-- Public mode: app is visible without sign-in. `locked` is only set while the auth screen is open. -->
+<body>
 <a class="skip-link" href="#main">Skip to content</a>
 
 <!-- Icon sprite (stroke icons, inherit currentColor) -->
@@ -81,6 +81,8 @@
             <button type="button" class="pw-toggle" aria-label="Show password"><svg class="ico" aria-hidden="true"><use href="#i-eye"/></svg></button></div></div>
         <button class="btn primary full auth-submit" type="submit">Sign in</button>
         <button class="link-btn auth-link" type="button" data-auth-tab="reset">Forgot password?</button>
+        <button class="btn ghost full" type="button" id="guestContinueBtn" style="margin-top:10px">Continue without account</button>
+        <p class="hint" style="margin:8px 0 0;text-align:center">You can use calculator, news and guides without signing in. Sign in to save a portfolio across devices.</p>
       </form>
 
       <form class="auth-form" id="registerForm" data-auth-panel="register" novalidate hidden>
@@ -176,6 +178,13 @@
       <span id="liveBannerMsg">Live CSE data could not be loaded. Enter Market Price manually, or try again in a moment.</span>
     </div>
     <button class="btn" type="button" id="bannerRetryBtn">↻ Try again</button>
+  </div>
+
+  <div class="banner guest-banner" id="guestBanner" role="status" hidden>
+    <div>
+      <b>Browsing as guest.</b>
+      <span>Calculator, news and guides work without an account. <button type="button" class="link-btn" id="guestSignInBtn">Sign in</button> to save your portfolio across devices.</span>
+    </div>
   </div>
 
   <noscript><div class="banner">This app needs JavaScript enabled.</div></noscript>
