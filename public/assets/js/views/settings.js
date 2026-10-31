@@ -105,7 +105,13 @@ export function initSettings() {
     if (e.target.closest('[data-open-settings]')) openSettings();
   });
   $('#settingsBtn').addEventListener('click', openSettings);
-  $('#accountBtn').addEventListener('click', openSettings);
+  $('#accountBtn').addEventListener('click', () => {
+    if (!sync.currentUser() && typeof window.__csePromptSignIn === 'function') {
+      window.__csePromptSignIn();
+      return;
+    }
+    openSettings();
+  });
   initAccount();
 
   $('#testApiBtn').addEventListener('click', async (e) => {
