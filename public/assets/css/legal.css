@@ -178,3 +178,33 @@
     border-radius: 12px;
   }
 }
+
+/* Guides list */
+.guide-list {
+  list-style: none;
+  padding-left: 0;
+  margin: 16px 0 24px;
+}
+.guide-list li {
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+.guide-list li:last-child {
+  border-bottom: none;
+}
+.guide-meta {
+  display: block;
+  margin-top: 4px;
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.prose .note {
+  background: var(--panel-2, color-mix(in srgb, var(--gold) 8%, var(--panel)));
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin: 16px 0;
+  font-size: 14px;
+}
