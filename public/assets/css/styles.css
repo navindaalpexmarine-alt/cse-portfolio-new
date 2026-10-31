@@ -514,6 +514,7 @@ kbd { font-family: var(--font-mono); font-size: 12px; padding: 2px 7px; border-r
 
 /* Until signed in, only the auth screen (and dialogs/toasts) are shown. */
 body.locked .app-header, body.locked .tabs-wrap, body.locked main, body.locked .app-footer, body.locked .skip-link { display: none !important; }
+.guest-banner { background: color-mix(in srgb, var(--gold) 12%, var(--panel)); border-color: var(--gold-dim, var(--line)); }
 body:not(.locked) .auth-screen { display: none; }
 
 .auth-screen {
