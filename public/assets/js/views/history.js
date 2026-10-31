@@ -30,7 +30,7 @@ export function render() {
 
   const body = $('#txBody');
   if (!state.transactions.length) {
-    body.innerHTML = '<tr><td colspan="11" class="empty-row">Transactions නෑ — උඩින් log කරන්න</td></tr>';
+    body.innerHTML = '<tr><td colspan="11" class="empty-row">No transactions — log them above</td></tr>';
     return;
   }
   // Newest first, but keep the real index for deletion.
@@ -56,7 +56,7 @@ async function addTransaction(e) {
   const price = num($('#txPrice').value);
   const date = $('#txDate').value || todayISO();
   const note = $('#txNote').value.trim().slice(0, 200);
-  if (!symbol || qty <= 0 || price <= 0) { toast('Symbol, qty, price අවශ්‍යයි', { error: true }); return; }
+  if (!symbol || qty <= 0 || price <= 0) { toast('Symbol, qty and price are required', { error: true }); return; }
 
   const rate = state.commissionRate;
   const gross = qty * price;
