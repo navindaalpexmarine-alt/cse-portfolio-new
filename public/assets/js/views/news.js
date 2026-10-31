@@ -160,7 +160,7 @@ function renderList() {
   const rows = state.newsCache.filter((it) => matchesFilter(it, q));
   if (!rows.length) {
     $('#newsList').innerHTML = emptyHtml(state.newsCache.length
-      ? 'No news for this filter. Change the chip.'
+      ? 'No news for this filter. Try another chip.'
       : 'Click <strong>Refresh now</strong> — CSE + English/Sinhala media news will load.');
     return;
   }
