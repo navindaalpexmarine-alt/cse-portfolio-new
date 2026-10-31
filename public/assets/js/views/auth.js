@@ -110,6 +110,14 @@ export function showAuth({ notice = '', disabled = false } = {}) {
   setNotice(notice);
   $$('.auth-form button, .auth-form input, .auth-tab').forEach((el) => { el.disabled = disabled; });
   setPanel('login');
+  const guestBtn = document.getElementById('guestContinueBtn');
+  if (guestBtn) {
+    guestBtn.disabled = false;
+    guestBtn.onclick = () => {
+      resolveUser?.(null);
+      resolveUser = null;
+    };
+  }
   return new Promise((resolve) => { resolveUser = resolve; });
 }
 
