@@ -145,7 +145,7 @@ function renderConcentration(rows) {
     <div class="res-row hi"><span class="l">Top 3 concentration</span><span class="v" style="color:var(${warn ? '--warn' : '--pos'})">${fmtPct(top3pct)}</span></div>
     ${top3.map((x, i) => `<div class="res-row"><span class="l">${i + 1}. ${esc(x.name)}</span><span class="v">${fmtPct(x.pct)}</span></div>`).join('')}
     <div class="res-row"><span class="l">Sectors held</span><span class="v">${sectors}</span></div>
-    ${warn ? '<div class="tip" style="margin:8px 0 0">⚠ Top 3 ≥ 60% — concentration risk ඉහළයි.</div>' : ''}`;
+    ${warn ? '<div class="tip" style="margin:8px 0 0">⚠ Top 3 ≥ 60% — concentration risk is high.</div>' : ''}`;
 }
 
 export default { render };
