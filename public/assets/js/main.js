@@ -84,10 +84,11 @@ function onKey(e) {
 
 /* ---------- sign-in ---------- */
 
-/** Resolves with the signed-in user, showing the sign-in screen when needed. */
+/**
+ * Public mode: open the app without forcing sign-in.
+ * Returns the user when a session exists; otherwise null (guest).
+ */
 async function authenticate() {
-  let notice = '';
-  let disabled = false;
   try {
     const { user } = await account.me();
     if (user) return await prepare(user);
@@ -99,19 +100,39 @@ async function authenticate() {
         toast('Offline — showing the copy saved on this device', { ms: 4000 });
         return cached;
       }
-      notice = 'You are offline. Connect to the internet to sign in.';
-    } else if (err.code === 'db_not_configured') {
-      notice = 'Accounts are not set up on this site yet. (Site owner: connect "Upstash for Redis" in Vercel → Storage, then redeploy.)';
+    }
+    // 401 / no session → guest. Other errors still allow browsing.
+    if (err.status && err.status !== 401 && err.code !== 'offline') {
+      console.warn('session check', err);
+    }
+  }
+  return null;
+}
+
+/** Opens the sign-in screen; after success, reload so sync starts cleanly. */
+async function promptSignIn() {
+  let notice = '';
+  let disabled = false;
+  try {
+    await account.me();
+  } catch (err) {
+    if (err.code === 'db_not_configured') {
+      notice = 'Accounts are not set up on this site yet.';
       disabled = true;
     } else if (err.code === 'unavailable') {
-      notice = 'The account service is not running here. Start the site with "npm run dev", or open the deployed Vercel site.';
+      notice = 'The account service is not available right now.';
       disabled = true;
-    } else if (err.status !== 401) {
-      notice = err.message;
+    } else if (err.code === 'offline') {
+      notice = 'You are offline. Connect to the internet to sign in.';
     }
   }
   const user = await showAuth({ notice, disabled });
-  return prepare(user);
+  if (!user) {
+    hideAuth();
+    return;
+  }
+  await prepare(user);
+  location.reload();
 }
 
 /** Downloads (or imports) the user's portfolio before the app renders. */
@@ -127,9 +148,18 @@ async function prepare(user) {
 }
 
 function showAccount(user) {
+  if (!user) {
+    $('#accountInitial').textContent = '?';
+    $('#accountBtn').setAttribute('aria-label', 'Sign in');
+    const gb = $('#guestBanner');
+    if (gb) gb.hidden = false;
+    return;
+  }
   const label = (user.name || user.email || '?').trim();
   $('#accountInitial').textContent = label.charAt(0).toUpperCase();
   $('#accountBtn').setAttribute('aria-label', `Account: ${user.email}`);
+  const gb = $('#guestBanner');
+  if (gb) gb.hidden = true;
 }
 
 /* ---------- boot ---------- */
@@ -182,9 +212,12 @@ function boot(user) {
 
   window.addEventListener('pagehide', () => sync.flush());
 
-  startRouter('portfolio');
+  // Guests land on News (public content); signed-in users on Portfolio.
+  startRouter(user ? 'portfolio' : 'news');
   refreshPrices({ silent: true });
   startAutoRefresh();
+
+  $('#guestSignInBtn')?.addEventListener('click', () => promptSignIn());
 }
 
 async function start() {
@@ -196,7 +229,10 @@ async function start() {
     navigator.serviceWorker.register('sw.js').catch((err) => console.warn('SW registration failed', err));
   }
 
-  boot(await authenticate());
+  const user = await authenticate();
+  boot(user);
+  // Let Settings open sign-in when browsing as guest.
+  window.__csePromptSignIn = promptSignIn;
 }
 
 start();
