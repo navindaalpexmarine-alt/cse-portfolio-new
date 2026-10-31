@@ -91,7 +91,7 @@ export async function refreshPrices({ silent = false } = {}) {
     if (n && !silent) toast('Prices updated ✓');
   } catch (err) {
     setPriceStatus('Manual OK', 'err');
-    if (!silent) toast(`Live prices unavailable — Market Price manual type කරන්න (${err.message})`, { error: true, ms: 4000 });
+    if (!silent) toast(`Live prices unavailable — enter Market Price manually (${err.message})`, { error: true, ms: 4000 });
   } finally {
     refreshing = false;
     setBusy(btn, false);
