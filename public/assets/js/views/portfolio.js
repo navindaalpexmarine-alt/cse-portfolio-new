@@ -108,7 +108,7 @@ async function onTableClick(e) {
   const i = +btn.dataset.del;
   const h = state.holdings[i];
   if (!h) return;
-  if (!(await confirmDialog(`Delete ${h.name || 'this share'}?`, `"${h.name || 'share'}" Delete this share? This cannot be undone.`, { confirmLabel: 'Delete', danger: true }))) return;
+  if (!(await confirmDialog(`Delete ${h.name || 'this share'}?`, `"${h.name || 'share'}" Delete this? This cannot be undone.`, { confirmLabel: 'Delete', danger: true }))) return;
   state.holdings.splice(i, 1);
   commit('holdings');
   toast('Deleted');
@@ -147,7 +147,7 @@ function pickCol(headers, aliases) {
 
 /** Same column detection as the original: tolerant to ATrade header variations. */
 export function parseRowsToHoldings(rows, rate) {
-  if (!rows || rows.length < 2) throw new Error('No data in the file');
+  if (!rows || rows.length < 2) throw new Error('No data in file');
   let headerIdx = 0;
   for (let i = 0; i < Math.min(15, rows.length); i++) {
     if ((rows[i] || []).map(normHeader).some((c) => /security|symbol|stock|code|ticker/.test(c))) { headerIdx = i; break; }
@@ -159,7 +159,7 @@ export function parseRowsToHoldings(rows, rate) {
   const iBes = pickCol(headers, ['besprice', 'bes', 'breakeven', 'breakevensell', 'breakevensellingprice']);
   const iCost = pickCol(headers, ['totalcost', 'cost', 'investment', 'totalinvestment', 'bookvalue']);
   const iMkt = pickCol(headers, ['tradedprice', 'marketprice', 'lasttraded', 'ltp', 'price', 'lastprice', 'close', 'closingprice']);
-  if (iSym < 0) throw new Error('Could not find Symbol / Security column. Please upload an ATrade Portfolio Excel file.');
+  if (iSym < 0) throw new Error('Could not find Symbol / Security column. Upload an ATrade Portfolio Excel file.');
   if (iQty < 0) throw new Error('Could not find Quantity / Balance column.');
 
   const out = [];
@@ -177,7 +177,7 @@ export function parseRowsToHoldings(rows, rate) {
     const tradedPrice = iMkt >= 0 ? numVal(row[iMkt]) : avgPrice;
     out.push({ name, balance, avgPrice, besPrice, totalCost, tradedPrice, avgDps: 0, divMonth: 0 });
   }
-  if (!out.length) throw new Error('Could not find valid holdings. Please check the file columns.');
+  if (!out.length) throw new Error('No valid holdings found. Check the file columns.');
   return out;
 }
 
@@ -195,7 +195,7 @@ async function importFile(file) {
 
     const mode = await choose({
       title: `${parsed.length} shares found`,
-      message: 'Replace = replace the entire portfolio.\nMerge = merge with existing (same symbols updated, dividend settings kept).',
+      message: 'Replace = replace the whole portfolio.\nMerge = merge into existing (same symbols updated, dividend settings kept).',
       choices: [
         { value: 'cancel', label: 'Cancel', kind: 'ghost' },
         { value: 'merge', label: 'Merge', kind: 'ghost' },
