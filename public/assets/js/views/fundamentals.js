@@ -49,7 +49,7 @@ async function loadMovers(force = false) {
 export async function loadFundamentals(symOverride) {
   const box = $('#fundContent'), st = $('#fundStatus');
   const sym = symOverride || resolveSymbol($('#fundSearch'), $('#fundSymbol'));
-  if (!sym) { box.innerHTML = emptyHtml('Symbol තෝරන්න හෝ type කරන්න'); return; }
+  if (!sym) { box.innerHTML = emptyHtml('Select or type a symbol'); return; }
   selected = sym;
   $('#fundSearch').value = sym;
   if ($('#fundSymbol').querySelector(`option[value="${CSS.escape(sym)}"]`)) $('#fundSymbol').value = sym;
@@ -157,7 +157,7 @@ async function loadCompanyNews(sym, name) {
             <div class="news-source-row"><span class="src-dot"></span><span>${esc(it.source || 'Media')}</span></div></div>
           <div class="ni-side"><span class="ni-time">${esc(fmtDate(it.pubDate))}</span></div>
         </article>`).join('')}</div>`
-      : emptyHtml('Recent media news නෑ මේ symbol එකට — News tab බලන්න.', true);
+      : emptyHtml('No recent media news for this symbol — check the News tab.', true);
   } catch (err) {
     if (box.isConnected) box.innerHTML = emptyHtml(`Company news load fail — ${esc(err.message)}`, true);
   }
