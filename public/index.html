@@ -173,7 +173,7 @@
   <div class="banner" id="liveBanner" role="alert" hidden>
     <div>
       <b>Live data unavailable.</b>
-      <span id="liveBannerMsg">Live CSE data could not be loaded. Market Price manual type කරන්න, or try again in a moment.</span>
+      <span id="liveBannerMsg">Live CSE data could not be loaded. Enter Market Price manually, or try again in a moment.</span>
     </div>
     <button class="btn" type="button" id="bannerRetryBtn">↻ Try again</button>
   </div>
@@ -220,19 +220,19 @@
           <tbody id="tableBody"></tbody>
         </table>
       </div>
-      <div class="empty" id="emptyState" hidden>Share data නෑ. <strong>+ Share</strong> click කරලා පටන් ගන්න, or upload your ATrade file.</div>
+      <div class="empty" id="emptyState" hidden>No share data yet. Click <strong>+ Share</strong> to get started, or upload your ATrade file.</div>
       <div class="toolbar">
-        <button class="btn primary" id="addBtn" type="button">+ Share එකක් දාමු</button>
+        <button class="btn primary" id="addBtn" type="button">+ Add share</button>
         <div class="save-note"><span class="d" aria-hidden="true"></span><span id="saveStatus">Saved</span></div>
       </div>
       <div class="legend">
-        <b>B.E.S</b> = Break Even Sell (commission ඇතුළුව). <b>SELL</b> = market ≥ B.E.S · <b>NEAR</b> = 1% ඇතුළත · <b>WAIT</b> = තව බලන්න.
+        <b>B.E.S</b> = Break Even Sell (including commission). <b>SELL</b> = market ≥ B.E.S · <b>NEAR</b> = within 1% · <b>WAIT</b> = hold for now.
         Gold market price = live CSE data.
       </div>
     </div>
 
     <div class="tip">
-      <b>ATrade:</b> Portfolio → Save/Excel download කරලා → <b>↑ ATrade upload</b> click කරලා file එක select කරන්න (auto update).<br>
+      <b>ATrade:</b> Portfolio → Save/Excel download → click <b>↑ ATrade upload</b> and select the file (auto update).<br>
       <b>Your data</b> is saved to your account automatically and syncs to every device you sign in on.
     </div>
   </section>
@@ -260,14 +260,14 @@
       <div class="panel">
         <h2 class="panel-title">Profit check (Sell)</h2>
         <div class="field">
-          <label for="cBuyCost">ඔයාගේ මුළු Buy Cost (Rs)</label>
-          <input id="cBuyCost" type="number" min="0" step="0.01" placeholder="Buy කරද්දී ගිය මුළු මුදල" inputmode="decimal">
+          <label for="cBuyCost">Your total buy cost (Rs)</label>
+          <input id="cBuyCost" type="number" min="0" step="0.01" placeholder="Total amount spent when buying" inputmode="decimal">
         </div>
         <div class="res" id="cPL" aria-live="polite"></div>
         <div class="legend no-border">
           <b>BUY:</b> Total = gross + commission<br>
           <b>SELL:</b> Net = gross − commission<br>
-          Rate header එකේ change කරන්න පුළුවන් (default 1.12%).
+          You can change the rate in the header (default 1.12%).
         </div>
       </div>
     </div>
@@ -276,8 +276,8 @@
   <!-- ========== DIVIDENDS ========== -->
   <section class="view" id="view-div" role="tabpanel" aria-labelledby="tab-div" hidden>
     <div class="tip">
-      <b>Seasonality calendar:</b> Month එකක් තෝරන්න → past years pattern එකෙන් <b>ඒ month එකේ dividend දෙන්න ඉඩ තියෙන companies</b> පේනවා (CSE announce වෙන්න කලින් hint).
-      මේක guarantee නෙවෙයි — history-based estimate විතරයි.
+      <b>Seasonality calendar:</b> Pick a month → based on past years, see <b>companies that often pay dividends in that month</b> (hint before CSE announces).
+      This is not a guarantee — history-based estimate only.
       Full history: <a href="https://stockdividends.iamsupun.com/stocks/" target="_blank" rel="noopener">stockdividends.iamsupun.com</a> ·
       Official: <a href="https://www.cse.lk/announcements/?category=CASH+DIVIDEND" target="_blank" rel="noopener">CSE cash dividends</a>
     </div>
@@ -292,7 +292,7 @@
         <input class="search grow" id="divSearchBox" placeholder="e.g. SAMP, CTC, COMB, HNB…" type="search" data-search>
         <button class="btn primary" type="submit">Analyse</button>
       </form>
-      <div id="divSearchResult"><div class="empty">Symbol type කරලා <strong>Analyse</strong> — past dividend months + estimate පෙනෙනවා.</div></div>
+      <div id="divSearchResult"><div class="empty">Type a symbol and click <strong>Analyse</strong> — past dividend months + estimate appear.</div></div>
     </div>
 
     <div class="panel">
@@ -312,9 +312,9 @@
       <div class="month-btns" id="monthBtns" role="group" aria-label="Select month"></div>
       <div id="seasonList"></div>
       <div class="legend">
-        <b class="t-pos">HIGH</b> = බොහෝ වසරවල ඒ month එකේ දුන් history ·
-        <b class="t-warn">MED</b> = සමහර වසර ·
-        <b class="t-muted">LOW</b> = අඩු frequency. Click symbol → history page.
+        <b class="t-pos">HIGH</b> = paid in that month in most years ·
+        <b class="t-warn">MED</b> = some years ·
+        <b class="t-muted">LOW</b> = low frequency. Click symbol → history page.
       </div>
     </div>
 
@@ -323,7 +323,7 @@
         <h2>Live dividend-related (CSE announcements)</h2>
         <button class="btn ghost" id="refreshDivLiveBtn" type="button">↻ Refresh</button>
       </div>
-      <div id="liveDivList"><div class="empty">News / CSE load වුණාම dividend mentions මෙතන පේනවා. හෝ Refresh.</div></div>
+      <div id="liveDivList"><div class="empty">Dividend mentions appear here when News / CSE loads. Or tap Refresh.</div></div>
       <div class="legend">Official cash-dividend table: <a href="https://www.cse.lk/announcements/?category=CASH+DIVIDEND" target="_blank" rel="noopener">CSE Cash Dividend</a> · History: <a href="https://stockdividends.iamsupun.com/stocks/" target="_blank" rel="noopener">stockdividends.iamsupun.com</a></div>
     </div>
 
@@ -339,12 +339,12 @@
             <tbody id="divSetupBody"></tbody>
           </table>
         </div>
-        <div class="legend">Avg DPS = පසුගිය අවුරුදුවල average cash dividend per share. Typical month = සාමාන්‍යයෙන් XD/payment වෙන month (1–12).</div>
+        <div class="legend">Avg DPS = average cash dividend per share in recent years. Typical month = usual XD/payment month (1–12).</div>
       </div>
       <div class="panel">
         <h2 class="panel-title">Forecast · next 12 months</h2>
         <div id="divForecast" class="res"></div>
-        <div class="legend">Forecast = past pattern එකෙන් approximate window. Official announcement එනකන් confirm නොවේ. Always check CSE.</div>
+        <div class="legend">Forecast = approximate window from past pattern. Not confirmed until the official announcement. Always check CSE.</div>
       </div>
     </div>
     <div class="panel">
@@ -360,7 +360,7 @@
           <tbody id="divEventBody"></tbody>
         </table>
       </div>
-      <div class="legend">Announced dividends මෙතන log කරන්න. Portfolio balance × DPS = ඔයාට ලැබෙන approximate amount.</div>
+      <div class="legend">Log announced dividends here. Portfolio balance × DPS ≈ your approximate amount.</div>
     </div>
   </section>
 
@@ -372,7 +372,7 @@
         <button class="btn ghost" id="clearSnapBtn" type="button">Clear history</button>
       </div>
       <div class="chart-box" style="height:240px"><canvas id="valueChart" role="img" aria-label="Line chart of portfolio market value versus total cost over time"></canvas></div>
-      <div class="legend">Prices refresh වුණාම snapshot save වෙනවා (one per day, local). Trend බලන්න.</div>
+      <div class="legend">When prices refresh, a snapshot is saved (one per day, local). Use it to view trends.</div>
     </div>
     <div class="charts">
       <div class="panel">
@@ -400,7 +400,7 @@
   <!-- ========== HISTORY ========== -->
   <section class="view" id="view-history" role="tabpanel" aria-labelledby="tab-history" hidden>
     <div class="tip">
-      <b>Transaction log:</b> Buy/Sell record කරන්න → realized P/L track වෙනවා. Holdings auto-update (average-cost method).
+      <b>Transaction log:</b> Log buys/sells → realized P/L is tracked. Holdings auto-update (average-cost method).
     </div>
     <div class="summary" id="histSummary"></div>
     <div class="panel">
@@ -454,16 +454,16 @@
           <tbody id="txBody"></tbody>
         </table>
       </div>
-      <div class="legend">SELL net − proportional cost basis = realized P/L (average-cost method). Commission rate header එකෙන්.</div>
+      <div class="legend">SELL net − proportional cost basis = realized P/L (average-cost method). Commission rate is set in the header.</div>
     </div>
   </section>
 
   <!-- ========== NEWS ========== -->
   <section class="view" id="view-news" role="tabpanel" aria-labelledby="tab-news" hidden>
     <div class="tip">
-      <b>Share ගන්න කලින් news බලන්න:</b> CSE official + <b>English &amp; Sinhala local media</b>
+      <b>Check news before you buy:</b> CSE official + <b>English &amp; Sinhala local media</b>
       (EconomyNext, Daily FT, Daily Mirror, Sunday Times, LBO, The Island, Ada Derana, Hiru, News First, Lankadeepa, Dinamina, Mawbima).
-      Auto-refresh every 3 min while this tab is open. Your holdings highlight වෙනවා.
+      Auto-refresh every 3 min while this tab is open. Your holdings are highlighted.
     </div>
     <div class="summary news-hero" id="newsHero"></div>
     <div class="panel">
@@ -482,17 +482,17 @@
           <button type="button" class="news-chip" data-nf="cse" aria-pressed="false">CSE official</button>
           <button type="button" class="news-chip" data-nf="div" aria-pressed="false">Dividends</button>
           <button type="button" class="news-chip" data-nf="media" aria-pressed="false">English media</button>
-          <button type="button" class="news-chip" data-nf="si" aria-pressed="false">සිංහල media</button>
+          <button type="button" class="news-chip" data-nf="si" aria-pressed="false">Sinhala media</button>
         </div>
         <label class="sr-only" for="newsSearch">Search news</label>
         <input class="search news-search" id="newsSearch" placeholder="Search company, keyword…" type="search" data-search>
       </div>
       <div class="news-list" id="newsList">
-        <div class="empty"><strong>Refresh now</strong> click කරන්න — CSE + English/Sinhala media news load වෙනවා.</div>
+        <div class="empty">Click <strong>Refresh now</strong> — CSE + English/Sinhala media news will load.</div>
       </div>
       <div class="legend">
         <b>Sources:</b> CSE Financial / Official · EconomyNext, FT, Mirror, Times, LBO, Island ·
-        <b>සිංහල:</b> Ada Derana, Hiru News, News First, Lankadeepa, Dinamina, Mawbima.
+        <b>Sinhala sources:</b> Ada Derana, Hiru News, News First, Lankadeepa, Dinamina, Mawbima.
         <b class="t-pos">Bullish</b> / <b class="t-neg">Bearish</b> = keyword signal only — not investment advice.
       </div>
     </div>
@@ -500,7 +500,7 @@
 
   <!-- ========== FUNDAMENTALS ========== -->
   <section class="view" id="view-fund" role="tabpanel" aria-labelledby="tab-fund" hidden>
-    <div class="tip"><b>Live CSE · full market</b> — ඕනෑම listed share search කරලා fundamentals බලන්න (portfolio only නෙවෙයි). Price, market cap, beta, ranges, volumes, turnover.</div>
+    <div class="tip"><b>Live CSE · full market</b> — search any listed share and view fundamentals (not portfolio-only). Price, market cap, beta, ranges, volumes, turnover.</div>
 
     <div class="panel">
       <div class="panel-head">
@@ -520,12 +520,12 @@
       <button class="btn ghost" id="fundRefreshSymBtn" type="button" title="Reload full CSE list">↻ List</button>
       <span class="chip" id="fundStatus" role="status">—</span>
     </form>
-    <div id="fundContent"><div class="empty">Symbol type/select කරලා <strong>Load</strong> — full market list එකෙන් ඕනෑම share.</div></div>
+    <div id="fundContent"><div class="empty">Type or select a symbol and click <strong>Load</strong> — any share from the full market list.</div></div>
   </section>
 
   <!-- ========== TECHNICAL ========== -->
   <section class="view" id="view-tech" role="tabpanel" aria-labelledby="tab-tech" hidden>
-    <div class="tip"><b>Live CSE + TradingView</b> — advanced chart (TV), 52-week position, pivots, volume, CSE daily chart. Symbol තෝරලා Load.</div>
+    <div class="tip"><b>Live CSE + TradingView</b> — advanced chart (TV), 52-week position, pivots, volume, CSE daily chart. Select a symbol and Load.</div>
     <form class="stock-picker" id="techForm">
       <label for="techSearch">Symbol</label>
       <input class="search grow" id="techSearch" list="techDatalist" placeholder="Type any CSE symbol…" autocomplete="off" data-search>
@@ -557,7 +557,7 @@
       </div>
       <div id="tv_chart_container"></div>
     </div>
-    <div id="techContent"><div class="empty">Symbol තෝරලා <strong>Load</strong> කරන්න — TradingView + CSE metrics.</div></div>
+    <div id="techContent"><div class="empty">Select a symbol and click <strong>Load</strong> — TradingView + CSE metrics.</div></div>
   </section>
 </main>
 
