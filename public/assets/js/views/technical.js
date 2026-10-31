@@ -55,7 +55,7 @@ async function stockIdFor(sym) {
 export async function loadTechnicals(symOverride) {
   const box = $('#techContent'), st = $('#techStatus');
   const sym = symOverride || resolveSymbol($('#techSearch'), $('#techSymbol'));
-  if (!sym) { box.innerHTML = emptyHtml('Symbol තෝරන්න හෝ type කරන්න'); return; }
+  if (!sym) { box.innerHTML = emptyHtml('Select or type a symbol'); return; }
   selected = sym;
   $('#techSearch').value = sym;
   if ($('#techSymbol').querySelector(`option[value="${CSS.escape(sym)}"]`)) $('#techSymbol').value = sym;
@@ -154,7 +154,7 @@ async function drawCharts(pts, period) {
   priceChart?.destroy(); volChart?.destroy();
   priceChart = volChart = null;
   if (!pts.length) {
-    $('#techPriceChart').parentElement.innerHTML = emptyHtml('Chart data නෑ — market closed හෝ symbol check කරන්න', true);
+    $('#techPriceChart').parentElement.innerHTML = emptyHtml('No chart data — market may be closed or check the symbol', true);
     $('#techVolChart')?.parentElement.remove();
     return;
   }
