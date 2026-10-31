@@ -81,7 +81,7 @@ function analyse(raw) {
       <a class="btn ghost" target="_blank" rel="noopener" href="${CSE_DIV_URL}">CSE cash dividends</a>
       <button class="btn ghost" type="button" data-apply-month="${esc(key)}" data-month="${months[0] || 0}">Apply typical month → portfolio</button>
     </div>
-    <div class="legend">This analysis is based on history patterns — not a guarantee. Confirm official XD/announcement on CSE.</div>`;
+    <div class="legend">This analysis is based on history patterns — not a guarantee. Confirm official XD/announcement on the CSE.</div>`;
 }
 
 function applyMonth(sym, month) {
@@ -186,7 +186,7 @@ function renderForecast() {
     .sort((a, b) => a.year * 12 + a.month - (b.year * 12 + b.month));
   $('#divForecast').innerHTML = items.length
     ? items.map((it) => `<div class="res-row"><span class="l"><b>${esc(it.name)}</b> · ~${MONTHS[it.month]} ${it.year}</span><span class="v t-pos">~ Rs ${fmt(it.amt)}</span></div>`).join('')
-    : '<div class="res-row"><span class="l">Add Avg DPS + typical month to see the forecast</span><span class="v">—</span></div>';
+    : '<div class="res-row"><span class="l">Enter Avg DPS + typical month to see forecast</span><span class="v">—</span></div>';
 }
 
 function renderEvents() {
