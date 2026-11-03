@@ -672,3 +672,21 @@ body:not(.locked) .auth-screen { display: none; }
   font-weight: 600;
 }
 body.locked .cse-chat { display: none !important; }
+
+.cse-chat-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 10px 8px;
+}
+.cse-chat-chip {
+  border: 1px solid var(--line);
+  background: var(--panel-2, #1a222d);
+  color: var(--ink, #e8eef6);
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.cse-chat-chip:hover { border-color: var(--gold, #c4a35a); }
+.cse-chat-thinking { opacity: 0.6; }
