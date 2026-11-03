@@ -8,8 +8,8 @@ import { DIV_PROFILE, MONTHS, SEASON } from '../data/reference.js';
 import { baseSym } from '../core/finance.js';
 import { $, esc, fmt, fmtDate, fmtPct, num, safeUrl } from '../core/utils.js';
 import { emptyHtml, renderPreservingFocus, setBusy, toast, confirmDialog } from '../core/ui.js';
-import { loadNews } from './news.js';
 import { cse } from '../core/api.js';
+import { loadNews } from './news.js';
 
 let selectedMonth = new Date().getMonth() + 1;
 const STRENGTH_ORDER = { high: 0, med: 1, low: 2 };
@@ -101,8 +101,8 @@ function renderSeasonality() {
   for (let m = 1; m <= 12; m++) {
     const rows = SEASON[m] || [];
     const score = rows.reduce((s, r) => s + (r[3] === 'high' ? 3 : r[3] === 'med' ? 2 : 1), 0);
-    const pct = maxScore ? Math.round((score / maxScore) * 100) : 0;
-    const lvl = pct > 70 ? 'hot' : pct > 35 ? 'warm' : 'cool';
+    const pct = Math.round((score / maxScore) * 100);
+    const lvl = pct > 60 ? 'lvl-hi' : pct > 30 ? 'lvl-mid' : '';
     heat += `<button type="button" class="heat-cell ${lvl}" data-month="${m}" aria-pressed="${m === selectedMonth}" aria-label="${MONTHS[m]}: ${rows.length} companies">
       <span class="m">${MONTHS[m]}</span><span class="n">${rows.length} names</span><span class="bar"><span style="width:${pct}%"></span></span></button>`;
   }
@@ -130,84 +130,126 @@ function renderSeasonality() {
 
 /* ---------- live dividend mentions ---------- */
 
-let cashDivCache = [];
-
-async function loadCashDividends() {
-  try {
-    const data = await cse('cashDividends');
-    cashDivCache = Array.isArray(data?.cashDividends) ? data.cashDividends : [];
-  } catch {
-    cashDivCache = [];
+/** Pull DPS / per-share amounts out of announcement titles when present. */
+function extractDivAmount(text) {
+  const s = String(text || '');
+  const patterns = [
+    /(?:Rs\.?|LKR|රු\.?)\s*([0-9]+(?:\.[0-9]+)?)\s*(?:per\s*share|\/\s*share|a share|per ordinary)?/i,
+    /([0-9]+(?:\.[0-9]+)?)\s*(?:Rs\.?|LKR)\s*(?:per\s*share|\/\s*share)?/i,
+    /(?:DPS|dividend(?:\s+per\s+share)?)\s*(?:of|:)?\s*(?:Rs\.?|LKR)?\s*([0-9]+(?:\.[0-9]+)?)/i,
+    /([0-9]+(?:\.[0-9]+)?)\s*cents?\s*per\s*share/i,
+  ];
+  for (const re of patterns) {
+    const m = s.match(re);
+    if (m) {
+      const n = Number(m[1]);
+      if (n > 0 && n < 100000) {
+        const cents = /cents?/i.test(m[0]);
+        return cents ? `Rs ${(n / 100).toFixed(2)} / share` : `Rs ${n} / share`;
+      }
+    }
   }
-  return cashDivCache;
+  return null;
+}
+
+let cseCashDivCache = [];
+let cseCashDivAt = 0;
+
+/** Official CSE cash-dividend rows (amount often only inside the PDF, not the API). */
+async function loadCseCashDividends(force = false) {
+  if (!force && Date.now() - cseCashDivAt < 120000 && cseCashDivCache.length) return cseCashDivCache;
+  try {
+    const data = await cse('approvedAnnouncement');
+    const rows = (data.approvedAnnouncements || []).filter((x) =>
+      /cash\s*dividend/i.test(x.announcementCategory || '')
+    );
+    cseCashDivCache = rows;
+    cseCashDivAt = Date.now();
+  } catch (err) {
+    console.warn('CSE cash dividends', err);
+  }
+  return cseCashDivCache;
 }
 
 function renderLiveDividends() {
   const el = $('#liveDivList');
-  const mine = new Set(state.holdings.map((h) => baseSym(h.name)).filter(Boolean));
+  if (!el) return;
 
-  // Prefer structured CSE cash-dividend table (includes amount)
-  if (cashDivCache.length) {
-    el.innerHTML = `<div class="news-list">${cashDivCache.slice(0, 25).map((it) => {
-      const sym = baseSym(it.symbol || '');
-      const dps = it.votingDivPerShare != null ? Number(it.votingDivPerShare) : null;
-      const nonDps = it.nonVotingDivPerShare != null ? Number(it.nonVotingDivPerShare) : null;
-      const amountTxt = dps != null && !Number.isNaN(dps)
-        ? `Rs ${dps}${nonDps && nonDps > 0 ? ` (NV Rs ${nonDps})` : ''}`
-        : '';
-      const type = it.firstAndFinal ? 'First & Final'
-        : it.finalDividend ? 'Final'
-        : it.typeFirstInt ? '1st Interim'
-        : it.typeSecondInt ? '2nd Interim'
-        : it.typeThirdInt ? '3rd Interim'
-        : 'Cash Dividend';
-      const title = `${it.company || sym || 'Company'} · ${type}${amountTxt ? ` · ${amountTxt}` : ''}`;
-      const meta = [
-        it.xd ? `XD ${it.xd}` : '',
-        it.recordDate ? `RD ${it.recordDate}` : '',
-        it.payment ? `Pay ${it.payment}` : '',
-      ].filter(Boolean).join(' · ');
-      return `<article class="news-item compact">
-        <div class="ni-body">
-          <div class="title">${esc(title)}</div>
-          <div class="news-meta">
-            <span class="badge cse">DIVIDEND / CSE</span>
-            ${sym && mine.has(sym) ? '<span class="badge port">YOUR PORTFOLIO</span>' : ''}
-            ${sym ? `<b class="t-gold">${esc(sym)}</b>` : ''}
-            ${amountTxt ? `<span class="pill sell">${esc(amountTxt)}</span>` : ''}
-          </div>
-          <div class="news-source-row"><span class="src-dot"></span><span>${esc(meta || it.remarks || 'CSE cash dividend')}</span></div>
-        </div>
-        <div class="ni-side">
-          <span class="ni-time">${esc(it.dateOfAnnouncement || it.createdDate || '')}</span>
-          <a class="btn ghost sm" href="${CSE_DIV_URL}" target="_blank" rel="noopener">Open ↗</a>
-        </div>
-      </article>`;
-    }).join('')}</div>`;
-    return;
+  const newsRows = state.newsCache
+    .filter((it) => it.kind === 'div' || /dividend|xd date|x-div|cash dividend|interim dividend|final dividend|ලාභාංශ/i.test(`${it.title} ${it.source}`))
+    .map((it) => ({
+      kind: 'news',
+      title: it.title,
+      link: it.link,
+      source: it.source || 'News',
+      symbol: it.symbol,
+      date: it.pubDate,
+      amount: extractDivAmount(it.title),
+    }));
+
+  const cseRows = cseCashDivCache.map((x) => {
+    const title = `${x.company || 'Company'} — Cash dividend` +
+      (x.xd ? ` · XD ${x.xd}` : '') +
+      (x.paymentDate ? ` · Pay ${x.paymentDate}` : '') +
+      (x.allotment ? ` · ${x.allotment}` : '');
+    const amount = x.allotment
+      ? (String(x.allotment).match(/rs|lkr|[0-9]/i) ? String(x.allotment) : `Rs ${x.allotment}`)
+      : extractDivAmount(x.remarks || '') || null;
+    return {
+      kind: 'cse',
+      title,
+      link: CSE_DIV_URL,
+      source: 'CSE announcement',
+      symbol: x.symbol,
+      company: x.company,
+      date: x.dateOfAnnouncement || x.createdDate,
+      amount,
+      xd: x.xd,
+      pay: x.paymentDate,
+    };
+  });
+
+  // Merge: CSE official first, then news (dedupe rough by company+date)
+  const seen = new Set();
+  const rows = [];
+  for (const it of [...cseRows, ...newsRows]) {
+    const key = `${(it.company || it.symbol || it.title || '').toLowerCase()}|${it.date || ''}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    rows.push(it);
+    if (rows.length >= 30) break;
   }
 
-  // Fallback: news-based list
-  const rows = state.newsCache.filter((it) => it.kind === 'div' || /dividend|xd date|x-div|cash dividend|interim dividend|final dividend|ලාභාංශ/i.test(`${it.title} ${it.source}`)).slice(0, 25);
   if (!rows.length) {
-    el.innerHTML = emptyHtml(state.newsCache.length ? 'No dividend-related announcements yet.' : 'News not loaded yet — click <strong>↻ Refresh</strong>.');
+    el.innerHTML = emptyHtml(
+      state.newsCache.length || cseCashDivCache.length
+        ? 'No dividend-related announcements yet.'
+        : 'Loading announcements… use <strong>↻ Refresh</strong> if empty.'
+    );
     return;
   }
+
+  const mine = new Set(state.holdings.map((h) => baseSym(h.name)).filter(Boolean));
   el.innerHTML = `<div class="news-list">${rows.map((it) => {
     const sym = baseSym(it.symbol);
-    const link = safeUrl(it.link);
+    const link = safeUrl(it.link) || CSE_DIV_URL;
+    const amt = it.amount
+      ? `<div class="div-amt"><b>${esc(it.amount)}</b></div>`
+      : `<div class="div-amt muted">Amount: see announcement PDF / CSE</div>`;
     return `<article class="news-item compact">
       <div class="ni-body">
         <a class="title" href="${esc(link)}" target="_blank" rel="noopener">${esc(it.title)}</a>
-        <div class="news-meta"><span class="badge cse">DIVIDEND / CSE</span>
+        ${amt}
+        <div class="news-meta"><span class="badge cse">${it.kind === 'cse' ? 'CSE CASH DIVIDEND' : 'DIVIDEND / NEWS'}</span>
           ${sym && mine.has(sym) ? '<span class="badge port">YOUR PORTFOLIO</span>' : ''}
           ${sym ? `<b class="t-gold">${esc(sym)}</b>` : ''}</div>
         <div class="news-source-row"><span class="src-dot"></span><span>${esc(it.source)}</span></div>
       </div>
-      <div class="ni-side"><span class="ni-time">${esc(fmtDate(it.pubDate))}</span>
+      <div class="ni-side"><span class="ni-time">${esc(fmtDate(it.date))}</span>
         <a class="btn ghost sm" href="${esc(link)}" target="_blank" rel="noopener">Open ↗</a></div>
     </article>`;
-  }).join('')}</div>`;
+  }).join('')}</div>
+  <p class="legend" style="margin-top:8px">If amount is missing, open the CSE PDF — the feed often has the company name only. Log DPS in <b>Event log</b> when you know it.</p>`;
 }
 
 /* ---------- setup, forecast, events ---------- */
@@ -226,7 +268,7 @@ function renderSetup() {
       <td class="t-gold"><b>Rs ${fmt(est)}</b></td>
       <td class="${yoc > 0 ? 't-pos' : 't-muted'}">${yoc ? fmtPct(yoc) : '—'}</td>
     </tr>`;
-  }).join('') || '<tr><td colspan="6" class="empty-row">No shares in portfolio</td></tr>';
+  }).join('') || '<tr><td colspan="6" class="empty-row">No shares in portfolio yet. Add holdings in the <b>Portfolio</b> tab first, then come back to set Avg DPS.</td></tr>';
   renderPreservingFocus($('#divSetupBody'), html);
   return totalEst;
 }
@@ -254,28 +296,54 @@ function renderEvents() {
   const txt = (i, f, v, w, ph = '') => `<input class="cell text-cell" data-key="e${i}:${f}" data-ei="${i}" data-ef="${f}" value="${esc(v)}" placeholder="${ph}" style="max-width:${w}px" aria-label="${f}">`;
   const html = state.divEvents.map((ev, i) => ({ ev, i })).reverse().map(({ ev, i }) => {
     const hold = state.holdings.find((h) => h.name === ev.symbol);
-    const est = hold ? hold.balance * (ev.dps || 0) : 0;
+    const income = hold ? hold.balance * ev.dps : 0;
     return `<tr>
-      <td>${txt(i, 'symbol', ev.symbol, 90, 'SYM')}</td>
-      <td><input class="cell" data-key="e${i}:dps" data-ei="${i}" data-ef="dps" value="${ev.dps || ''}" inputmode="decimal" style="max-width:70px" aria-label="DPS"></td>
-      <td>${txt(i, 'type', ev.type, 80, 'Final')}</td>
-      <td>${txt(i, 'xd', ev.xd, 90, 'YYYY-MM-DD')}</td>
-      <td>${txt(i, 'pay', ev.pay, 90, 'YYYY-MM-DD')}</td>
-      <td>
-        <select class="cell" data-key="e${i}:status" data-ei="${i}" data-ef="status" aria-label="Status">
-          <option value="Announced" ${ev.status !== 'Paid' ? 'selected' : ''}>Announced</option>
-          <option value="Paid" ${ev.status === 'Paid' ? 'selected' : ''}>Paid</option>
-        </select>
-      </td>
-      <td class="t-gold">${est ? `Rs ${fmt(est)}` : '—'}</td>
-      <td><button type="button" class="btn ghost sm" data-edel="${i}" aria-label="Delete event">✕</button></td>
+      <td>${txt(i, 'symbol', ev.symbol, 110, 'SYMBOL')}</td>
+      <td><input class="cell" data-key="e${i}:dps" data-ei="${i}" data-ef="dps" value="${ev.dps}" inputmode="decimal" aria-label="DPS"></td>
+      <td>${txt(i, 'type', ev.type, 84)}</td>
+      <td>${txt(i, 'xd', ev.xd, 104, 'YYYY-MM-DD')}</td>
+      <td>${txt(i, 'pay', ev.pay, 104, 'YYYY-MM-DD')}</td>
+      <td><select class="select" data-key="e${i}:status" data-ei="${i}" data-ef="status" aria-label="Status" style="padding:5px 8px">
+        <option ${ev.status !== 'Paid' ? 'selected' : ''}>Announced</option><option ${ev.status === 'Paid' ? 'selected' : ''}>Paid</option></select></td>
+      <td class="t-gold">${hold ? '~Rs ' + fmt(income) : '—'}</td>
+      <td><button class="del" type="button" data-edel="${i}" aria-label="Delete event">&times;</button></td>
     </tr>`;
   }).join('');
   renderPreservingFocus(body, html);
 }
 
+
+/** Fill avgDps + typicalMonth from DIV_PROFILE when holding has no DPS yet. */
+function autoFillFromProfiles({ force = false } = {}) {
+  let months = 0;
+  let dpsN = 0;
+  for (const h of state.holdings) {
+    const base = baseSym(h.name || '');
+    const prof = DIV_PROFILE[base];
+    if (!prof) continue;
+    if (prof.months?.length && (!h.divMonth || force)) {
+      h.divMonth = prof.months[0];
+      months++;
+    }
+    // typicalDps is often a note, not a number — only apply real numeric values
+    const dps = num(String(prof.typicalDps || '').replace(/[^0-9.]/g, ''), 0);
+    if (dps > 0 && (force || !(h.avgDps > 0))) {
+      h.avgDps = dps;
+      dpsN++;
+    }
+  }
+  if (months || dpsN) {
+    commit('holdings');
+    toast(`Smart fill: ${months} typical month(s)` + (dpsN ? `, ${dpsN} DPS value(s)` : '') + '. Set Avg DPS from dividend history if still empty.');
+  } else {
+    toast('No profile match — research a symbol above, or type Avg DPS from past years (history link).');
+  }
+  render();
+}
+
 export function render() {
   renderSeasonality();
+  loadCseCashDividends().then(() => renderLiveDividends()).catch(() => renderLiveDividends());
   renderLiveDividends();
   const totalEst = renderSetup();
   renderForecast();
@@ -307,7 +375,31 @@ export function init() {
     if (e.currentTarget.id === 'yearHeat') $('#seasonPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
   $('#yearHeat').addEventListener('click', pickMonth);
+  
   $('#monthBtns').addEventListener('click', pickMonth);
+  $('#divAutoFillBtn')?.addEventListener('click', () => autoFillFromProfiles({ force: false }));
+  $('#divLiveRefresh')?.addEventListener('click', async () => {
+    const btn = $('#divLiveRefresh');
+    setBusy(btn, true);
+    try {
+      await loadNews({ force: true });
+      await loadCseCashDividends(true);
+      renderLiveDividends();
+      toast('Announcements refreshed');
+    } catch (err) {
+      toast(err.message || 'Refresh failed', { error: true });
+    } finally {
+      setBusy(btn, false);
+    }
+  });
+  document.querySelectorAll('[data-div-sym]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const sym = btn.getAttribute('data-div-sym');
+      $('#divSearchBox').value = sym;
+      analyse(sym);
+      $('#divSearchResult')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+  });
 
   $('#divSetupBody').addEventListener('change', (e) => {
     const inp = e.target.closest('input.cell');
@@ -344,9 +436,9 @@ export function init() {
     requestAnimationFrame(() => events.querySelector('input')?.focus());
   });
   $('#refreshDivLiveBtn').addEventListener('click', async (e) => {
-    const btn = e.currentTarget;
+    const btn = e.currentTarget; // currentTarget is null after the await
     setBusy(btn, true);
-    await Promise.all([loadNews(), loadCashDividends()]);
+    await loadNews();
     setBusy(btn, false);
     renderLiveDividends();
     toast('Dividend feed updated');
@@ -357,9 +449,6 @@ export function init() {
 export function show() {
   render();
   if (!state.newsCache.length && state.live !== 'down') loadNews().catch(() => {});
-  if (!cashDivCache.length && state.live !== 'down') {
-    loadCashDividends().then(() => renderLiveDividends()).catch(() => {});
-  }
 }
 
 export default { init, render, show };
