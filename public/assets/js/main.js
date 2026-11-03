@@ -16,6 +16,7 @@ import { applyChartTheme } from './core/loader.js';
 import { $, num } from './core/utils.js';
 import { toast } from './core/ui.js';
 import { initSettings } from './views/settings.js';
+import { initChatbot } from './views/chatbot.js';
 
 import portfolio from './views/portfolio.js';
 import calculator from './views/calculator.js';
@@ -189,6 +190,7 @@ function boot(user) {
   $('#helpBtn').addEventListener('click', () => $('#helpDialog').showModal());
   document.addEventListener('keydown', onKey);
   initSettings();
+  initChatbot();
 
   // Another tab saved changes -> reload so tabs never overwrite each other.
   // Another tab signed out / switched account -> restart this one too.
