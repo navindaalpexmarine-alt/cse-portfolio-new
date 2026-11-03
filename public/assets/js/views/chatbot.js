@@ -38,40 +38,109 @@ function fmtPct(n) {
   return `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
 }
 
-function findCompany(query) {
-  const q = (query || '').toLowerCase().replace(/[?.!,]/g, ' ').trim();
-  const tokens = q.split(/\s+/).filter((t) => t.length >= 2);
-  const market = state.market || [];
-  if (!market.length) return null;
+/** Words that appear in many CSE names — never match on these alone. */
+const STOP = new Set([
+  'plc', 'ltd', 'limited', 'company', 'companies', 'the', 'and', 'of', 'sri', 'lanka',
+  'holdings', 'holding', 'group', 'corp', 'corporation', 'inc', 'co', 'public',
+  'plantations', 'plantation', 'finance', 'bank', 'hotels', 'hotel', 'investments',
+  'investment', 'services', 'service', 'trading', 'industries', 'industry',
+  'details', 'detail', 'overview', 'info', 'information', 'about',
+  'ගැන', 'කියන්න', 'share', 'shares', 'stock', 'wala', 'walata', 'ekk', 'eka',
+]);
 
-  const symMatch = query.toUpperCase().match(/\b([A-Z]{2,8})(?:\.(N|X|P|Z)?\d*)?\b/);
-  if (symMatch) {
+function scoreName(query, name, sym) {
+  const q = query.toLowerCase();
+  const n = (name || '').toLowerCase();
+  const base = (sym || '').toLowerCase().split('.')[0];
+  const tokens = q.replace(/[?.!,]/g, ' ').split(/\s+/).filter((t) => t.length >= 3 && !STOP.has(t));
+  let sc = 0;
+  if (n && q.includes(n)) sc += 15;
+  if (n && n.includes(q) && q.length >= 5) sc += 12;
+  for (const t of tokens) {
+    if (n.includes(t)) sc += t.length >= 5 ? 8 : 5;
+    if (base === t || base.startsWith(t.slice(0, 4))) sc += 6;
+  }
+  if (tokens.length >= 2 && tokens.filter((t) => n.includes(t)).length >= 2) sc += 6;
+  return sc;
+}
+
+/**
+ * Resolve a CSE company from free text.
+ * Uses live trade list + symbolSearch (works even if not traded today, e.g. KOTA).
+ */
+async function resolveCompany(query) {
+  const q = (query || '').trim();
+  if (!q) return null;
+  const market = state.market || [];
+
+  // 1) Explicit ticker in query (COMB, KOTA.N0000) — skip PLC/LTD suffix after a name
+  const symMatches = [...q.toUpperCase().matchAll(/\b([A-Z]{2,8})(?:\.(N|X|P|Z|D|R)?\d+)?\b/g)];
+  for (const symMatch of symMatches) {
+    const full = symMatch[0];
     const base = symMatch[1];
+    const idx = q.toUpperCase().indexOf(full);
+    const before = q.slice(Math.max(0, idx - 16), idx).toLowerCase();
+    if ((base === 'PLC' || base === 'LTD') && /[a-z]{3,}/.test(before.replace(/[^a-zA-Z\u0D80-\u0DFF]/g, ' '))) {
+      continue;
+    }
     const hit = market.find((m) => {
-      const s = m.symbol || '';
-      return s === base || s.startsWith(base + '.') || s.replace(/\..*$/, '') === base;
+      const s = (m.symbol || '').toUpperCase();
+      return s === full || s === base || s.startsWith(base + '.') || s.replace(/\..*$/, '') === base;
     });
     if (hit) return hit;
+    // not in today's trade list — still try as symbol
+    if (base.length >= 3 && base !== 'PLC' && base !== 'LTD') {
+      return { symbol: full.includes('.') ? full : base + '.N0000', name: base };
+    }
   }
 
+  // 2) Score against market list
   let best = null;
   let bestScore = 0;
   for (const m of market) {
-    const sym = (m.symbol || '').toLowerCase();
-    const name = (m.name || '').toLowerCase();
-    let sc = 0;
-    if (q.includes(sym) || q.includes(sym.split('.')[0])) sc += 5;
-    for (const t of tokens) {
-      if (t.length < 3) continue;
-      if (name.includes(t)) sc += 3;
-      if (sym.includes(t)) sc += 2;
-    }
+    const sc = scoreName(q, m.name, m.symbol);
     if (sc > bestScore) {
       bestScore = sc;
       best = m;
     }
   }
-  return bestScore >= 3 ? best : null;
+  if (best && bestScore >= 8) return best;
+
+  // 3) symbolSearch with distinctive prefixes (Kotagala → KOTA)
+  const tokens = q.toLowerCase().replace(/[?.!,]/g, ' ').split(/\s+/).filter((t) => t.length >= 4 && !STOP.has(t));
+  const prefixes = new Set();
+  for (const t of tokens) {
+    prefixes.add(t.slice(0, 4).toUpperCase());
+    if (t.length >= 5) prefixes.add(t.slice(0, 5).toUpperCase());
+  }
+  for (const pref of prefixes) {
+    try {
+      const data = await cse('symbolSearch', { symbol: pref });
+      const rows = (data.reqCompanySymbol || []).filter((r) => r.symbol && !String(r.symbol).includes('"') && r.name && r.name !== 'NOT DEFINED');
+      // Prefer voting ordinary .N0000
+      rows.sort((a, b) => {
+        const ap = a.symbol.endsWith('.N0000') ? 0 : 1;
+        const bp = b.symbol.endsWith('.N0000') ? 0 : 1;
+        return ap - bp;
+      });
+      let localBest = null;
+      let localSc = 0;
+      for (const r of rows) {
+        const sc = scoreName(q, r.name, r.symbol);
+        if (sc > localSc) {
+          localSc = sc;
+          localBest = r;
+        }
+      }
+      if (localBest && localSc >= 8) {
+        return { symbol: localBest.symbol, name: localBest.name, id: localBest.id };
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  return bestScore >= 6 ? best : null;
 }
 
 async function companyReply(hit, st) {
@@ -330,7 +399,7 @@ async function respond(query) {
     try { await ensureMarketSymbols(); } catch { /* offline */ }
   }
 
-  const hit = findCompany(q);
+  const hit = await resolveCompany(q);
   const companyAsk = hit && (
     /price|share|company|stock|overview|කොටස|මිල|ගැන|about|tell|what|කියන්න|details|info/.test(q.toLowerCase())
     || q.trim().length <= 28
