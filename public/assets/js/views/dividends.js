@@ -290,9 +290,52 @@ function divType(it) {
   return 'Cash Dividend';
 }
 
+/**
+ * Find the DPS in ANY field of a CSE row. Different CSE endpoints use different
+ * field names, so: known names first → any numeric "per share / dps / amount" key
+ * → finally parse every text field (title, remarks, description…).
+ */
+const DPS_KEYS = ['votingDivPerShare', 'divPerShare', 'dividendPerShare', 'dps', 'DPS', 'cashDividend',
+  'dividendAmount', 'amountPerShare', 'perShare', 'rate', 'dividendRate', 'amount', 'allotment'];
+function amountFromRow(x) {
+  if (!x || typeof x !== 'object') return null;
+  for (const k of DPS_KEYS) {
+    const v = x[k];
+    const n = typeof v === 'number' ? posNum(v) : (parseAmount(v) ?? posNum(v));
+    if (n && n < 10000) return n;
+  }
+  for (const [k, v] of Object.entries(x)) {
+    if (/non.?voting/i.test(k)) continue;
+    if (/(per.?share|dps|div.*amount|div.*rate)/i.test(k)) {
+      const n = typeof v === 'number' ? posNum(v) : (parseAmount(v) ?? posNum(v));
+      if (n && n < 10000) return n;
+    }
+  }
+  for (const v of Object.values(x)) {
+    if (typeof v !== 'string' || v.length < 4) continue;
+    const n = parseAmount(v);
+    if (n) return n;
+  }
+  return null;
+}
+
+/* Manual DPS you type on a row (kept in this browser) — used when CSE gives no amount. */
+const OVR_KEY = 'divManualDps.v1';
+const ovrLoad = () => { try { return JSON.parse(localStorage.getItem(OVR_KEY) || '{}') || {}; } catch { return {}; } };
+const ovrSave = (o) => { try { localStorage.setItem(OVR_KEY, JSON.stringify(o)); } catch { /* storage blocked */ } };
+const ovrId = (r) => `${r.symbol || (r.company || '').toLowerCase()}|${isoDate(r.xd) || isoDate(r.date)}`;
+
+let sampleLogged = false;
+function logSample(endpoint, row) {
+  if (sampleLogged || !row) return;
+  sampleLogged = true;
+  // Open DevTools → Console to see exactly which fields CSE sends (helps if amounts are missing).
+  console.info(`[dividends] sample row from ${endpoint}:`, row);
+}
+
 /** Structured CSE cash-dividend row → common shape. */
 function fromCashDividend(it) {
-  const dps = posNum(it.votingDivPerShare) ?? parseAmount(it.remarks);
+  const dps = posNum(it.votingDivPerShare) ?? amountFromRow(it);
   return {
     kind: 'cse',
     symbol: baseSym(it.symbol || ''),
@@ -313,7 +356,7 @@ function fromCashDividend(it) {
 
 /** Generic CSE announcement row (amount often only in the PDF) → common shape. */
 function fromAnnouncement(x) {
-  const dps = parseAmount(x.allotment) ?? posNum(x.allotment) ?? parseAmount(x.remarks);
+  const dps = amountFromRow(x);
   return {
     kind: 'cse',
     symbol: baseSym(x.symbol || ''),
@@ -394,7 +437,7 @@ async function fetchCseRows() {
   try {
     const data = await cse('cashDividends');
     const list = Array.isArray(data?.cashDividends) ? data.cashDividends : [];
-    if (list.length) return { rows: list.map(fromCashDividend), via: 'cashDividends' };
+    if (list.length) { logSample('cashDividends', list[0]); return { rows: list.map(fromCashDividend), via: 'cashDividends' }; }
   } catch (err) {
     console.warn('[dividends] cashDividends unavailable', err);
   }
@@ -402,6 +445,7 @@ async function fetchCseRows() {
   try {
     const data = await cse('approvedAnnouncement');
     const list = (data?.approvedAnnouncements || []).filter((x) => /cash\s*dividend/i.test(x.announcementCategory || ''));
+    logSample('approvedAnnouncement', list[0]);
     const rows = list.map(fromAnnouncement);
     await enrichFromNews(rows);
     return { rows, via: 'announcements' };
@@ -456,6 +500,12 @@ function buildLiveRows() {
     if (xd && xd >= today) return [0, xd.getTime()];          // upcoming XD: soonest first
     return [1, -(toDate(r.date)?.getTime() || 0)];             // otherwise: newest first
   };
+  const ovr = ovrLoad();
+  for (const r of out) {
+    const m = posNum(ovr[ovrId(r)]);
+    if (!r.dps && m) { r.dps = m; r.dpsSource = 'manual'; }
+  }
+
   out.sort((a, b) => { const ra = rank(a), rb = rank(b); return (ra[0] - rb[0]) || (ra[1] - rb[1]); });
   return out.slice(0, LIVE_LIMIT);
 }
@@ -497,8 +547,11 @@ function liveItemHtml(r, idx, holds, today) {
     : '';
 
   const amountRow = amountTxt
-    ? `<div class="div-amt"><span class="pill sell" style="font-size:14px"><b>${esc(amountTxt)}</b></span>${r.dpsSource === 'news' ? ' <span class="t-muted">(from news — verify)</span>' : ''}${income ? ` · <span class="t-pos">your ${fmt(nonNeg(hold.balance))} shares → Rs ${fmt(income)}</span>` : ''}</div>`
-    : '<div class="div-amt muted">Amount: not in feed yet — open the CSE PDF</div>';
+    ? `<div class="div-amt"><span class="pill sell" style="font-size:14px"><b>${esc(amountTxt)}</b></span>${r.dpsSource === 'news' ? ' <span class="t-muted">(from news — verify)</span>' : r.dpsSource === 'manual' ? ` <span class="t-muted">(entered by you)</span> <button type="button" class="link-btn" data-dps-clear="${idx}">edit</button>` : ''}${income ? ` · <span class="t-pos">your ${fmt(nonNeg(hold.balance))} shares → Rs ${fmt(income)}</span>` : ''}</div>`
+    : `<div class="div-amt muted">Amount not in CSE feed —
+        <a href="${esc(r.link || CSE_DIV_URL)}" target="_blank" rel="noopener">open PDF</a>, then type it:
+        <input class="cell" data-dps-in="${idx}" inputmode="decimal" placeholder="Rs / share" style="max-width:90px" aria-label="Dividend per share">
+      </div>`;
 
   const canLog = r.symbol && r.dps && hold;
   const link = esc(r.link || CSE_DIV_URL);
@@ -810,9 +863,26 @@ export function init() {
   ['#divLiveRefresh', '#refreshDivLiveBtn'].forEach((sel) =>
     $(sel)?.addEventListener('click', (e) => refreshLive(e.currentTarget)));
 
-  $('#liveDivList')?.addEventListener('click', (e) => {
+  const liveList = $('#liveDivList');
+  liveList?.addEventListener('click', (e) => {
     const b = e.target.closest('[data-log]');
-    if (b) logLiveRow(lastLiveRows[Number(b.dataset.log)]);
+    if (b) { logLiveRow(lastLiveRows[Number(b.dataset.log)]); return; }
+    const clr = e.target.closest('[data-dps-clear]');
+    if (clr) {
+      const r = lastLiveRows[Number(clr.dataset.dpsClear)];
+      if (!r) return;
+      const o = ovrLoad(); delete o[ovrId(r)]; ovrSave(o);
+      renderLiveDividends();
+    }
+  });
+  liveList?.addEventListener('change', (e) => {
+    const inp = e.target.closest('[data-dps-in]');
+    const r = inp && lastLiveRows[Number(inp.dataset.dpsIn)];
+    const v = inp && posNum(inp.value);
+    if (!r || !v) return;
+    const o = ovrLoad(); o[ovrId(r)] = v; ovrSave(o);
+    renderLiveDividends();
+    toast(`${r.rawSym || r.company} · Dividend Rs ${v.toFixed(2)} / share saved`);
   });
 
   $('#divSetupBody').addEventListener('change', (e) => {
