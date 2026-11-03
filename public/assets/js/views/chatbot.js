@@ -73,28 +73,33 @@ async function resolveCompany(query) {
   if (!q) return null;
   const market = state.market || [];
 
-  // 1) Explicit ticker in query (COMB, KOTA.N0000) — skip PLC/LTD suffix after a name
-  const symMatches = [...q.toUpperCase().matchAll(/\b([A-Z]{2,8})(?:\.(N|X|P|Z|D|R)?\d+)?\b/g)];
-  for (const symMatch of symMatches) {
-    const full = symMatch[0];
-    const base = symMatch[1];
-    const idx = q.toUpperCase().indexOf(full);
-    const before = q.slice(Math.max(0, idx - 16), idx).toLowerCase();
-    if ((base === 'PLC' || base === 'LTD') && /[a-z]{3,}/.test(before.replace(/[^a-zA-Z\u0D80-\u0DFF]/g, ' '))) {
-      continue;
-    }
+  // Pure ticker only: "COMB" or "COMB.N0000" (whole query)
+  const pure = q.toUpperCase().match(/^([A-Z]{2,8})(\.(N|X|P|Z|D|R)?\d+)?$/);
+  if (pure) {
+    const base = pure[1];
+    const full = pure[0];
+    if (base === 'PLC' || base === 'LTD') return null;
     const hit = market.find((m) => {
       const s = (m.symbol || '').toUpperCase();
       return s === full || s === base || s.startsWith(base + '.') || s.replace(/\..*$/, '') === base;
     });
     if (hit) return hit;
-    // not in today's trade list — still try as symbol
-    if (base.length >= 3 && base !== 'PLC' && base !== 'LTD') {
-      return { symbol: full.includes('.') ? full : base + '.N0000', name: base };
-    }
+    try {
+      const data = await cse('symbolSearch', { symbol: base });
+      const rows = (data.reqCompanySymbol || []).filter((r) => r.symbol && !String(r.symbol).includes('"') && r.name && r.name !== 'NOT DEFINED');
+      const n0000 = rows.find((r) => /\.N0000$/i.test(r.symbol)) || rows[0];
+      if (n0000) return { symbol: n0000.symbol, name: n0000.name, id: n0000.id };
+    } catch { /* ignore */ }
+    return null; // do NOT invent .N0000
   }
 
-  // 2) Score against market list
+  // Name / phrase: need company-ish intent + strong name score
+  const intent = /company|share|stock|plc|ltd|price|overview|details|symbol|ticker|ගැන|කොටස|මිල|විස්තර|plantations?|bank|finance|holdings?|hotels?|tobacco|leasing/i.test(q);
+  if (!intent && q.split(/\s+/).length > 1) {
+    // multi-word without company intent → not a company lookup
+    return null;
+  }
+
   let best = null;
   let bestScore = 0;
   for (const m of market) {
@@ -104,43 +109,51 @@ async function resolveCompany(query) {
       best = m;
     }
   }
-  if (best && bestScore >= 8) return best;
+  if (best && bestScore >= 12) return best;
 
-  // 3) symbolSearch with distinctive prefixes (Kotagala → KOTA)
+  // symbolSearch only with distinctive 4+ letter tokens (Kotagala → KOTA)
   const tokens = q.toLowerCase().replace(/[?.!,]/g, ' ').split(/\s+/).filter((t) => t.length >= 4 && !STOP.has(t));
-  const prefixes = new Set();
-  for (const t of tokens) {
-    prefixes.add(t.slice(0, 4).toUpperCase());
-    if (t.length >= 5) prefixes.add(t.slice(0, 5).toUpperCase());
-  }
-  for (const pref of prefixes) {
+  if (!tokens.length) return null;
+
+  for (const t0 of tokens) {
+    const pref = t0.slice(0, 4).toUpperCase();
     try {
       const data = await cse('symbolSearch', { symbol: pref });
       const rows = (data.reqCompanySymbol || []).filter((r) => r.symbol && !String(r.symbol).includes('"') && r.name && r.name !== 'NOT DEFINED');
-      // Prefer voting ordinary .N0000
-      rows.sort((a, b) => {
-        const ap = a.symbol.endsWith('.N0000') ? 0 : 1;
-        const bp = b.symbol.endsWith('.N0000') ? 0 : 1;
-        return ap - bp;
-      });
       let localBest = null;
       let localSc = 0;
       for (const r of rows) {
         const sc = scoreName(q, r.name, r.symbol);
-        if (sc > localSc) {
-          localSc = sc;
+        // Prefer ordinary shares
+        const bonus = /\.N0000$/i.test(r.symbol) ? 2 : 0;
+        if (sc + bonus > localSc) {
+          localSc = sc + bonus;
           localBest = r;
         }
       }
-      if (localBest && localSc >= 8) {
+      // Require strong name overlap (avoid random prefix hits)
+      if (localBest && localSc >= 12) {
         return { symbol: localBest.symbol, name: localBest.name, id: localBest.id };
       }
-    } catch {
-      /* ignore */
-    }
+    } catch { /* ignore */ }
   }
 
-  return bestScore >= 6 ? best : null;
+  return null;
+}
+
+/** Only run company lookup when the user is clearly asking about a stock. */
+function wantsCompanyInfo(query) {
+  const q = (query || '').trim();
+  if (!q || isGreeting(q)) return false;
+  // pure symbol
+  if (/^[A-Za-z]{2,8}(\.[A-Za-z0-9]+)?$/.test(q)) return true;
+  // explicit company intent / name
+  if (/company|share|stock|plc|price|overview|details|symbol|ticker|ගැන|කොටස|මිල|විස්තර|plantations?|about\s+/i.test(q)) return true;
+  // short query containing a ticker-like token: "COMB price", "what is SAMP"
+  const words = q.split(/\s+/);
+  if (words.length <= 6 && /\b[A-Za-z]{2,8}\b/.test(q) && /\b(what|who|tell|show|about|is|ගැන)\b/i.test(q)) return true;
+  if (words.length <= 4 && /\b[A-Z]{2,8}\b/.test(q)) return true;
+  return false;
 }
 
 async function companyReply(hit, st) {
@@ -391,26 +404,26 @@ async function respond(query) {
   const q = (query || '').trim();
   if (!q) return fallback(st);
 
-  // Greetings first (how are you / ඔබට කොහොමද / hi)
+  // Greetings first
   if (isGreeting(q)) return greetingReply(st);
 
-  const maybeCompany = /[a-zA-Z]{2,}|company|share|price|කොටස|මිල|ශෙයර්|overview|ගැන/.test(q);
-  if (maybeCompany) {
+  // FAQ (app help) before any company guess
+  const faq = faqReply(q);
+  // If FAQ matched a real topic (not only weak), use it — but faqReply returns null if no match
+  if (faq) return faq;
+
+  // Company lookup only when clearly requested
+  if (wantsCompanyInfo(q)) {
     try { await ensureMarketSymbols(); } catch { /* offline */ }
+    const hit = await resolveCompany(q);
+    if (hit) return companyReply(hit, st);
+    return pick(st,
+      'I could not match that to a CSE company. Try the exact symbol (e.g. COMB) or full name (e.g. Kotagala Plantations).',
+      'CSE company එකකට match වුණේ නැහැ. Exact symbol (COMB) හෝ full name (Kotagala Plantations) try කරන්න.',
+      'Match නැහැ — symbol එක (COMB) හෝ full name එක type කරන්න.'
+    );
   }
 
-  const hit = await resolveCompany(q);
-  const companyAsk = hit && (
-    /price|share|company|stock|overview|කොටස|මිල|ගැන|about|tell|what|කියන්න|details|info/.test(q.toLowerCase())
-    || q.trim().length <= 28
-    || q.toUpperCase().includes((hit.symbol || '').split('.')[0])
-  );
-
-  if (hit && companyAsk) return companyReply(hit, st);
-
-  const faq = faqReply(q);
-  if (faq) return faq;
-  if (hit) return companyReply(hit, st);
   return fallback(st);
 }
 
