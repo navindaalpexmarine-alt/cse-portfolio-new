@@ -75,38 +75,148 @@ function findCompany(query) {
 }
 
 async function companyReply(hit, st) {
-  const pm = state.priceMap?.[hit.symbol] || {};
-  const price = pm.price ?? hit.price;
-  const chg = pm.changePct ?? pm.percentageChange ?? pm.change;
-  const name = hit.name || hit.symbol;
-  let extra = '';
+  const sym = hit.symbol;
+  const pm = state.priceMap?.[sym] || {};
+  let info = {};
+  let beta = {};
+  let profile = null;
+
   try {
-    const data = await cse('tradeSummary');
-    const list = data?.reqTradeSummery || data || [];
-    const row = list.find((x) => String(x.symbol || '').toUpperCase() === hit.symbol);
-    if (row) {
-      const vol = row.sharevolume ?? row.shareVolume ?? row.volume;
-      const turn = row.turnover;
-      if (vol != null) extra += `\nVolume: ${fmtNum(vol)}`;
-      if (turn != null) extra += `\nTurnover: Rs ${fmtNum(turn)}`;
-    }
+    const raw = await cse('companyInfoSummery', { symbol: sym });
+    info = raw.reqSymbolInfo || {};
+    beta = raw.reqSymbolBetaInfo || {};
   } catch { /* ignore */ }
 
+  try {
+    profile = await cse('companyProfile', { symbol: sym });
+  } catch { /* may need redeploy of api whitelist */ }
+
+  const sum = (profile?.reqComSumInfo && profile.reqComSumInfo[0]) || {};
+  const bizList = profile?.infoCompanyBusinessSummary || [];
+  const biz = bizList.map((b) => (b.body || b.title || '').trim()).filter(Boolean).join('; ');
+  const posts = profile?.topPosts || [];
+  const directors = (profile?.infoCompanyDirector || []).slice(0, 8);
+
+  const name = sum.name || info.name || hit.name || sym;
+  const sector = sum.sector || info.sectorName || info.sector || '';
+  const board = sum.boardType || '';
+  const web = sum.web || '';
+  const established = sum.established || '';
+  const price = info.lastTradedPrice ?? info.price ?? pm.price ?? hit.price;
+  const chgPct = info.changePercentage ?? info.percentageChange ?? pm.changePct;
+  const prev = info.previousClose;
+  const high = info.hiTrade ?? info.high;
+  const low = info.lowTrade ?? info.low;
+  const lo52 = info.p12LowPrice ?? info.ytdLowPrice;
+  const hi52 = info.p12HiPrice ?? info.ytdHiPrice;
+  const vol = info.tdyShareVolume;
+  const trades = info.tdyTradeVolume;
+  const turn = info.tdyTurnover ?? info.turnover;
+  const mcap = info.marketCap;
+  const mcapPct = info.marketCapPercentage;
+  const foreignPct = info.foreignPercentage;
+  const foreignHold = info.foreignHoldings;
+  const betaVal = beta.triASIBetaValue ?? beta.betaValueSPSL;
+  const issued = info.quantityIssued;
+
+  const lines = [];
+  lines.push(`${name} (${info.symbol || sym})`);
+  if (sector || board) {
+    lines.push(pick(st,
+      `Type: ${[sector, board].filter(Boolean).join(' · ')}`,
+      `වර්ගය: ${[sector, board].filter(Boolean).join(' · ')}`,
+      `Type: ${[sector, board].filter(Boolean).join(' · ')}`));
+  }
+  if (biz) {
+    lines.push(pick(st, `Business: ${biz}`, `ව්‍යාපාරය: ${biz}`, `Business: ${biz}`));
+  } else if (sector) {
+    lines.push(pick(st,
+      `Business: operates in the ${sector} sector (see company site for full description).`,
+      `ව්‍යාපාරය: ${sector} අංශයේ (සම්පූර්ණ විස්තර company website එකේ).`,
+      `Business: ${sector} sector එකේ — full story company website එකේ.`));
+  }
+  if (established) lines.push(pick(st, `Established: ${established}`, `ආරම්භය: ${established}`, `Established: ${established}`));
+  if (web) lines.push(`Web: ${web.startsWith('http') ? web : 'https://' + web.replace(/^\/\//, '')}`);
+
+  lines.push('');
+  lines.push(pick(st, '— Market snapshot —', '— වෙළඳපොළ —', '— Market snapshot —'));
+  lines.push(pick(st, `Last: Rs ${fmtNum(price)} (${fmtPct(chgPct)})`, `අවසාන මිල: Rs ${fmtNum(price)} (${fmtPct(chgPct)})`, `Last: Rs ${fmtNum(price)} · ${fmtPct(chgPct)}`));
+  if (prev != null) lines.push(`Prev close: Rs ${fmtNum(prev)}`);
+  if (high != null || low != null) lines.push(`Today H/L: ${fmtNum(high)} / ${fmtNum(low)}`);
+  if (lo52 != null || hi52 != null) lines.push(`52w: ${fmtNum(lo52)} – ${fmtNum(hi52)}`);
+  if (vol != null) lines.push(`Volume: ${fmtNum(vol)}`);
+  if (trades != null) lines.push(`Trades: ${fmtNum(trades)}`);
+  if (turn != null) lines.push(`Turnover: Rs ${fmtNum(turn)}`);
+  if (mcap != null) lines.push(`Market cap: Rs ${fmtNum(mcap)}` + (mcapPct != null ? ` (${fmtNum(mcapPct)}% of market)` : ''));
+  if (issued != null) lines.push(`Shares issued: ${fmtNum(issued)}`);
+  if (foreignPct != null || foreignHold != null) {
+    lines.push(pick(st,
+      `Foreign holding: ${foreignPct != null ? fmtNum(foreignPct) + '%' : ''} ${foreignHold != null ? '(' + fmtNum(foreignHold) + ' shares)' : ''}`.trim(),
+      `විදේශීය holding: ${foreignPct != null ? fmtNum(foreignPct) + '%' : ''} ${foreignHold != null ? '(' + fmtNum(foreignHold) + ')' : ''}`.trim(),
+      `Foreign holding: ${foreignPct != null ? fmtNum(foreignPct) + '%' : ''} ${foreignHold != null ? '(' + fmtNum(foreignHold) + ')' : ''}`.trim()
+    ));
+  }
+  if (betaVal != null) lines.push(`Beta (approx): ${fmtNum(betaVal)}`);
+
+  if (posts.length) {
+    lines.push('');
+    lines.push(pick(st, '— Key people —', '— ප්‍රධාන නිලධාරීන් —', '— Key people —'));
+    for (const p of posts.slice(0, 5)) {
+      const nm = `${(p.firstName || '').trim()} ${(p.lastName || '').trim()}`.trim();
+      const role = p.designationOther || '';
+      lines.push(role ? `${role}: ${nm}` : nm);
+    }
+  }
+
+  // Top shareholders: CSE public API does not expose a stable top-10 list here
+  lines.push('');
+  lines.push(pick(st,
+    '— Major shareholders —\nTop 10 holder names are not in the free CSE feed we use. Check the latest annual report / CSE company page for the official top shareholders list.',
+    '— ප්‍රධාන කොටස් හිමියන් —\nTop 10 නම් මේ free CSE feed එකේ නැහැ. Official list එක annual report හෝ CSE company page එකේ බලන්න.',
+    '— Major shareholders —\nTop 10 list මේ API එකේ නැහැ. CSE company page / annual report එකේ official list බලන්න.'
+  ));
+
+  const csePage = `https://www.cse.lk/pages/company-profile/company-profile.component.html?symbol=${encodeURIComponent((info.symbol || sym).replace(/\..*$/, '') + ((info.symbol || sym).includes('.') ? '' : '.N0000'))}`;
+  // simpler CSE search link
+  lines.push(`CSE: https://www.cse.lk/`);
+  if (sum.email1) lines.push(`Email: ${sum.email1}`);
+
+  lines.push('');
+  lines.push(pick(st,
+    'More charts: Fundamentals / Technicals tab → Load symbol. Not investment advice.',
+    'තව: Fundamentals / Technicals tab → symbol Load. Investment advice නෙවෙයි.',
+    'තව charts: Fundamentals/Technicals → Load. Advice නෙවෙයි.'
+  ));
+
+  return lines.join('\n');
+}
+
+function isGreeting(q) {
+  const t = (q || '').trim().toLowerCase();
+  if (!t) return false;
+  // how are you / how r u / how're you
+  if (/how\s*are\s*you|how\s*r\s*u|howre\s*you|how\s*do\s*you\s*do/.test(t)) return true;
+  // sinhala / mix
+  if (/ඔබට\s*කොහොමද|ඔයාට\s*කොහොමද|ඔබ\s*කොහොමද|කොහොමද\s*[.?ǃ!]*$/.test(q)) return true;
+  if (/obata\s*kohomada|oyata\s*kohomada|kohomada\??$|oba\s*kohomada/.test(t)) return true;
+  // short hellos
+  if (/^(hi|hello|hey|ayubowan|ayu|හායි|ආයුබෝවන්)[!.?\s]*$/i.test(t)) return true;
+  if (/^(hi|hello|hey)\b/.test(t) && t.length < 24) return true;
+  return false;
+}
+
+function greetingReply(st) {
   return pick(st,
-    `${name} (${hit.symbol})\nLast price: Rs ${fmtNum(price)}\nChange: ${fmtPct(chg)}${extra}\n\nMore detail: Fundamentals or Technicals tab → type this symbol → Load.\nNot investment advice.`,
-    `${name} (${hit.symbol})\nඅවසාන මිල: Rs ${fmtNum(price)}\nවෙනස: ${fmtPct(chg)}${extra}\n\nතව details: Fundamentals / Technicals tab එකේ symbol එක Load කරන්න.\nInvestment advice නෙවෙයි.`,
-    `${name} (${hit.symbol})\nLast price: Rs ${fmtNum(price)} · Change: ${fmtPct(chg)}${extra}\n\nFundamentals/Technicals tab එකේ මේ symbol Load කරන්න තව info එකට.\nAdvice නෙවෙයි — market numbers විතරයි.`
+    "I'm good, thanks for asking! 😊 How can I help — app tips, or a CSE company symbol like COMB?",
+    'මම හොඳට ඉන්නවා, අහපු එකට thanks! 😊 App එක ගැන හෝ company symbol එකක් අහන්න පුළුවන් (COMB, SAMP…).',
+    "මම හොඳට ඉන්නවා! 😊 How can I help — calculator/portfolio ගැන, හෝ company එකක් (COMB)?"
   );
 }
 
 const FAQ = [
   {
-    test: (q) => /^(hi|hello|hey|ayubowan|ayu)\b/i.test(q) || /ආයුබෝවන්|හායි|කොහොමද/.test(q),
-    reply: (st) => pick(st,
-      'Hey! Ask about the app (portfolio, calculator, dividends…) or a CSE company / symbol — e.g. COMB, SAMP.',
-      'ආයුබෝවන්! App එක ගැන හෝ CSE company/symbol එකක් අහන්න — උදා: COMB, SAMP.',
-      'Hi! App ගැන හෝ company symbol එකක් type කරන්න (COMB, SAMP). Calculator / portfolio ගැනත් අහන්න පුළුවන්.'
-    ),
+    test: (q) => isGreeting(q),
+    reply: (st) => greetingReply(st),
   },
   {
     test: (q) => /what is|about (this )?(app|site|website)|cse portfolio|මේක මොකද|app එක මොකද|website එක මොකද/.test(q),
@@ -212,14 +322,17 @@ async function respond(query) {
   const q = (query || '').trim();
   if (!q) return fallback(st);
 
-  const maybeCompany = /[a-zA-Z]{2,}|company|share|price|කොටස|මිල|ශෙයර්/.test(q);
+  // Greetings first (how are you / ඔබට කොහොමද / hi)
+  if (isGreeting(q)) return greetingReply(st);
+
+  const maybeCompany = /[a-zA-Z]{2,}|company|share|price|කොටස|මිල|ශෙයර්|overview|ගැන/.test(q);
   if (maybeCompany) {
     try { await ensureMarketSymbols(); } catch { /* offline */ }
   }
 
   const hit = findCompany(q);
   const companyAsk = hit && (
-    /price|share|company|stock|කොටස|මිල|ගැන|about|tell|what|කියන්න|details|info/.test(q.toLowerCase())
+    /price|share|company|stock|overview|කොටස|මිල|ගැන|about|tell|what|කියන්න|details|info/.test(q.toLowerCase())
     || q.trim().length <= 28
     || q.toUpperCase().includes((hit.symbol || '').split('.')[0])
   );
@@ -239,7 +352,13 @@ function el(tag, cls, text) {
   return n;
 }
 
+function translateUrl(text, toLang) {
+  const tl = toLang || 'si';
+  return `https://translate.google.com/?sl=auto&tl=${encodeURIComponent(tl)}&text=${encodeURIComponent(text)}&op=translate`;
+}
+
 export function initChatbot() {
+
   if ($('#cseChatRoot')) return;
 
   const root = el('div', 'cse-chat');
@@ -251,7 +370,7 @@ export function initChatbot() {
   panel.setAttribute('aria-label', 'Help chat');
 
   const head = el('div', 'cse-chat-head');
-  head.innerHTML = '<strong>Help</strong><span class="cse-chat-sub">EN · සිංහල · mix</span>';
+  head.innerHTML = '<strong>Help</strong><span class="cse-chat-sub">EN · සිංහල · Translate</span>';
   const closeBtn = el('button', 'cse-chat-close', '×');
   closeBtn.type = 'button';
   closeBtn.setAttribute('aria-label', 'Close');
@@ -295,9 +414,28 @@ export function initChatbot() {
   document.body.appendChild(root);
 
   function addMsg(text, who) {
+    const wrap = el('div', `cse-chat-msg ${who}`);
     const bubble = el('div', `cse-chat-bubble ${who}`);
     bubble.textContent = text;
-    msgs.appendChild(bubble);
+    wrap.appendChild(bubble);
+    if (who === 'bot') {
+      const tools = el('div', 'cse-chat-tools');
+      const aSi = document.createElement('a');
+      aSi.className = 'cse-chat-tr';
+      aSi.href = translateUrl(text, 'si');
+      aSi.target = '_blank';
+      aSi.rel = 'noopener noreferrer';
+      aSi.textContent = 'Translate → සිංහල';
+      const aEn = document.createElement('a');
+      aEn.className = 'cse-chat-tr';
+      aEn.href = translateUrl(text, 'en');
+      aEn.target = '_blank';
+      aEn.rel = 'noopener noreferrer';
+      aEn.textContent = 'Translate → English';
+      tools.append(aSi, aEn);
+      wrap.appendChild(tools);
+    }
+    msgs.appendChild(wrap);
     msgs.scrollTop = msgs.scrollHeight;
   }
 
