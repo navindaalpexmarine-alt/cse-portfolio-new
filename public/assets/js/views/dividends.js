@@ -8,7 +8,7 @@ import { DIV_PROFILE, MONTHS, SEASON } from '../data/reference.js';
 import { baseSym } from '../core/finance.js';
 import { $, esc, fmt, fmtDate, fmtPct, num, safeUrl } from '../core/utils.js';
 import { emptyHtml, renderPreservingFocus, setBusy, toast, confirmDialog } from '../core/ui.js';
-import { cse } from '../core/api.js';
+import { cse, news } from '../core/api.js';
 import { loadNews } from './news.js';
 
 let selectedMonth = new Date().getMonth() + 1;
@@ -134,10 +134,13 @@ function renderSeasonality() {
 function extractDivAmount(text) {
   const s = String(text || '');
   const patterns = [
-    /(?:Rs\.?|LKR|රු\.?)\s*([0-9]+(?:\.[0-9]+)?)\s*(?:per\s*share|\/\s*share|a share|per ordinary)?/i,
+    /(?:Rs\.?|LKR|රු\.?)\s*([0-9]+(?:\.[0-9]+)?)\s*(?:per\s*share|\/\s*share|a share|per ordinary share)?/i,
     /([0-9]+(?:\.[0-9]+)?)\s*(?:Rs\.?|LKR)\s*(?:per\s*share|\/\s*share)?/i,
     /(?:DPS|dividend(?:\s+per\s+share)?)\s*(?:of|:)?\s*(?:Rs\.?|LKR)?\s*([0-9]+(?:\.[0-9]+)?)/i,
     /([0-9]+(?:\.[0-9]+)?)\s*cents?\s*per\s*share/i,
+    /cash\s+dividend\s+of\s+(?:Rs\.?|LKR)?\s*([0-9]+(?:\.[0-9]+)?)/i,
+    /interim\s+dividend\s+(?:of\s+)?(?:Rs\.?|LKR)?\s*([0-9]+(?:\.[0-9]+)?)/i,
+    /final\s+dividend\s+(?:of\s+)?(?:Rs\.?|LKR)?\s*([0-9]+(?:\.[0-9]+)?)/i,
   ];
   for (const re of patterns) {
     const m = s.match(re);
@@ -145,7 +148,7 @@ function extractDivAmount(text) {
       const n = Number(m[1]);
       if (n > 0 && n < 100000) {
         const cents = /cents?/i.test(m[0]);
-        return cents ? `Rs ${(n / 100).toFixed(2)} / share` : `Rs ${n} / share`;
+        return cents ? `Rs ${(n / 100).toFixed(2)} / share` : `Rs ${fmt(n)} / share`;
       }
     }
   }
@@ -156,6 +159,35 @@ let cseCashDivCache = [];
 let cseCashDivAt = 0;
 
 /** Official CSE cash-dividend rows (amount often only inside the PDF, not the API). */
+
+async function enrichAmountsFromNews(cseRows) {
+  // Use already-loaded newsCache; also pull a focused google query once
+  const pool = [...(state.newsCache || [])];
+  try {
+    const data = await news('google', { q: 'CSE "cash dividend" OR "per share" Colombo' });
+    const items = data.items || data || [];
+    if (Array.isArray(items)) pool.push(...items);
+  } catch { /* optional */ }
+
+  for (const row of cseRows) {
+    if (row.amount) continue;
+    const company = (row.company || '').toLowerCase();
+    const short = company.replace(/\s+plc\.?$/, '').trim();
+    if (short.length < 4) continue;
+    for (const it of pool) {
+      const title = `${it.title || ''} ${it.summary || ''}`;
+      if (!title.toLowerCase().includes(short.slice(0, Math.min(12, short.length)))) continue;
+      const amt = extractDivAmount(title);
+      if (amt) {
+        row.amount = amt;
+        if (it.link) row.link = it.link;
+        break;
+      }
+    }
+  }
+  return cseRows;
+}
+
 async function loadCseCashDividends(force = false) {
   if (!force && Date.now() - cseCashDivAt < 120000 && cseCashDivCache.length) return cseCashDivCache;
   try {
@@ -163,7 +195,22 @@ async function loadCseCashDividends(force = false) {
     const rows = (data.approvedAnnouncements || []).filter((x) =>
       /cash\s*dividend/i.test(x.announcementCategory || '')
     );
-    cseCashDivCache = rows;
+    // Map to objects that can hold amount
+    const mapped = rows.map((x) => ({ ...x }));
+    await enrichAmountsFromNews(
+      mapped.map((x) => ({
+        company: x.company,
+        amount: x.allotment ? String(x.allotment) : null,
+        link: null,
+        _raw: x,
+      }))
+    ).then((enriched) => {
+      enriched.forEach((e, i) => {
+        if (e.amount && !mapped[i].allotment) mapped[i]._amountHint = e.amount;
+        if (e.link) mapped[i]._newsLink = e.link;
+      });
+    });
+    cseCashDivCache = mapped;
     cseCashDivAt = Date.now();
   } catch (err) {
     console.warn('CSE cash dividends', err);
@@ -194,11 +241,11 @@ function renderLiveDividends() {
       (x.allotment ? ` · ${x.allotment}` : '');
     const amount = x.allotment
       ? (String(x.allotment).match(/rs|lkr|[0-9]/i) ? String(x.allotment) : `Rs ${x.allotment}`)
-      : extractDivAmount(x.remarks || '') || null;
+      : (x._amountHint || extractDivAmount(x.remarks || '') || null);
     return {
       kind: 'cse',
       title,
-      link: CSE_DIV_URL,
+      link: x._newsLink || CSE_DIV_URL,
       source: 'CSE announcement',
       symbol: x.symbol,
       company: x.company,
