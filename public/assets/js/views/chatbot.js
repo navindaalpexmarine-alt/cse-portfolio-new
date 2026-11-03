@@ -1629,3 +1629,81 @@ export function initChatbot() {
 export { respond as chatRespond, marketStatus as chatMarketStatus };
 
 export default { init: initChatbot };
+/* ==========================================================
+ * Chatbot v2 — ADD this below your existing .cse-chat styles.
+ * Only new classes + a few upgrades. Uses currentColor /
+ * transparent mixes so it follows your light & dark themes.
+ * ========================================================== */
+
+.cse-chat-panel {
+  width: min(400px, calc(100vw - 24px));
+  max-height: min(640px, calc(100vh - 110px));
+  display: flex;
+  flex-direction: column;
+}
+
+.cse-chat-msgs { flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; }
+
+/* header */
+.cse-chat-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.cse-chat-title { display: flex; flex-direction: column; line-height: 1.2; }
+.cse-chat-status { font-size: 11px; opacity: .7; }
+.cse-chat-status.open { color: #16a34a; opacity: 1; }
+.cse-chat-headbtns { display: flex; align-items: center; gap: 4px; }
+.cse-chat-iconbtn {
+  background: none; border: 0; cursor: pointer; font-size: 14px; opacity: .65;
+  padding: 4px 6px; border-radius: 6px; color: inherit;
+}
+.cse-chat-iconbtn:hover { opacity: 1; background: color-mix(in srgb, currentColor 10%, transparent); }
+
+/* bubbles */
+.cse-chat-bubble { white-space: normal; word-break: break-word; line-height: 1.45; }
+.cse-chat-bubble strong { font-weight: 650; }
+.cse-chat-bubble .cse-chat-h { display: inline-block; margin: 2px 0; opacity: .85; }
+.cse-chat-bubble a { color: inherit; text-decoration: underline; }
+
+/* typing indicator */
+.cse-chat-thinking { display: inline-flex; gap: 4px; align-items: center; padding: 10px 12px; }
+.cse-chat-thinking span {
+  width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .35;
+  animation: cseChatDot 1s infinite ease-in-out;
+}
+.cse-chat-thinking span:nth-child(2) { animation-delay: .15s; }
+.cse-chat-thinking span:nth-child(3) { animation-delay: .3s; }
+@keyframes cseChatDot { 0%, 80%, 100% { opacity: .25; transform: translateY(0); } 40% { opacity: .9; transform: translateY(-3px); } }
+
+/* action buttons under a bot message (open tab, links) */
+.cse-chat-actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 2px; }
+.cse-chat-act {
+  font: inherit; font-size: 12px; padding: 4px 10px; border-radius: 999px; cursor: pointer;
+  border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+  background: transparent; color: inherit; text-decoration: none;
+}
+.cse-chat-act:hover { background: color-mix(in srgb, currentColor 10%, transparent); }
+
+/* copy / translate row */
+.cse-chat-tools { display: flex; gap: 10px; margin-top: 3px; font-size: 11px; opacity: .6; }
+.cse-chat-tools:hover { opacity: 1; }
+.cse-chat-tool { background: none; border: 0; padding: 0; cursor: pointer; font: inherit; color: inherit; text-decoration: underline; }
+
+/* chips: scroll sideways on small screens */
+.cse-chat-chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 6px 10px 8px; flex: 0 0 auto; }
+.cse-chat-chips::-webkit-scrollbar { display: none; }
+.cse-chat-chip { white-space: nowrap; flex: 0 0 auto; }
+
+/* mic */
+.cse-chat-form { display: flex; align-items: center; gap: 6px; }
+.cse-chat-input { flex: 1 1 auto; min-width: 0; }
+.cse-chat-mic {
+  background: none; border: 0; cursor: pointer; font-size: 16px; padding: 4px 6px; border-radius: 8px;
+}
+.cse-chat-mic.rec { background: #ef444422; animation: cseChatPulse 1.2s infinite; }
+@keyframes cseChatPulse { 50% { background: #ef444455; } }
+
+@media (max-width: 640px) {
+  .cse-chat-panel { max-height: calc(100vh - 90px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cse-chat-thinking span, .cse-chat-mic.rec { animation: none; }
+}
