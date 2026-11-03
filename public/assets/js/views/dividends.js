@@ -296,6 +296,7 @@ function fromCashDividend(it) {
   return {
     kind: 'cse',
     symbol: baseSym(it.symbol || ''),
+    rawSym: String(it.symbol || '').trim().toUpperCase(),
     company: it.company || '',
     type: divType(it),
     dps,
@@ -316,6 +317,7 @@ function fromAnnouncement(x) {
   return {
     kind: 'cse',
     symbol: baseSym(x.symbol || ''),
+    rawSym: String(x.symbol || '').trim().toUpperCase(),
     company: x.company || '',
     type: divType(x),
     dps,
@@ -336,6 +338,7 @@ function fromNews(it) {
   return {
     kind: 'news',
     symbol: baseSym(it.symbol || ''),
+    rawSym: String(it.symbol || '').trim().toUpperCase(),
     company: '',
     type: divType(it),
     dps,
@@ -468,12 +471,21 @@ function liveItemHtml(r, idx, holds, today) {
   const xd = toDate(r.xd);
   const daysToXd = xd ? Math.round((xd - today) / DAY) : null;
 
+  const symLabel = r.rawSym || r.symbol || '';
   const amountTxt = r.dps
-    ? `Rs ${fmt(r.dps)} / share${r.nvDps ? ` (NV Rs ${fmt(r.nvDps)})` : ''}`
+    ? `Rs ${r.dps.toFixed(2)} / share${r.nvDps ? ` (Non-voting Rs ${r.nvDps.toFixed(2)})` : ''}`
     : '';
   const income = hold && r.dps ? nonNeg(hold.balance) * r.dps : 0;
 
-  const title = r.kind === 'news' ? r.title : `${r.company || r.symbol || 'Company'} · ${r.type}`;
+  // Headline: "CWL.N0000 · Dividend Rs 3.00 / share"
+  const headline = symLabel
+    ? `${symLabel} · Dividend ${amountTxt || 'amount not published yet'}`
+    : (r.kind === 'news' ? r.title : `${r.company || 'Company'} · Dividend ${amountTxt || 'amount not published yet'}`);
+  // Sub-line: company / type, or the news headline when we built our own headline
+  const subline = r.kind === 'news'
+    ? (symLabel ? r.title : '')
+    : [r.company, r.type].filter(Boolean).join(' · ');
+
   const meta = [
     r.xd && `XD ${showDate(r.xd)}`,
     r.record && `RD ${showDate(r.record)}`,
@@ -485,20 +497,20 @@ function liveItemHtml(r, idx, holds, today) {
     : '';
 
   const amountRow = amountTxt
-    ? `<div class="div-amt"><b>${esc(amountTxt)}</b>${r.dpsSource === 'news' ? ' <span class="t-muted">(from news — verify)</span>' : ''}${income ? ` · <span class="t-pos">your est. Rs ${fmt(income)}</span>` : ''}</div>`
-    : '<div class="div-amt muted">Amount: see announcement PDF / CSE</div>';
+    ? `<div class="div-amt"><span class="pill sell" style="font-size:14px"><b>${esc(amountTxt)}</b></span>${r.dpsSource === 'news' ? ' <span class="t-muted">(from news — verify)</span>' : ''}${income ? ` · <span class="t-pos">your ${fmt(nonNeg(hold.balance))} shares → Rs ${fmt(income)}</span>` : ''}</div>`
+    : '<div class="div-amt muted">Amount: not in feed yet — open the CSE PDF</div>';
 
   const canLog = r.symbol && r.dps && hold;
   const link = esc(r.link || CSE_DIV_URL);
 
   return `<article class="news-item compact">
     <div class="ni-body">
-      <a class="title" href="${link}" target="_blank" rel="noopener">${esc(title)}</a>
+      <a class="title" href="${link}" target="_blank" rel="noopener"><b>${esc(headline)}</b></a>
+      ${subline ? `<div class="hint" style="margin:2px 0">${esc(subline)}</div>` : ''}
       ${amountRow}
       <div class="news-meta">
         <span class="badge cse">${r.kind === 'cse' ? 'CSE CASH DIVIDEND' : 'DIVIDEND / NEWS'}</span>
         ${hold ? '<span class="badge port">YOUR PORTFOLIO</span>' : ''}
-        ${r.symbol ? `<b class="t-gold">${esc(r.symbol)}</b>` : ''}
         ${xdBadge}
       </div>
       <div class="news-source-row"><span class="src-dot"></span><span>${esc(meta || r.source || r.note || 'CSE cash dividend')}</span></div>
