@@ -690,3 +690,15 @@ body.locked .cse-chat { display: none !important; }
 }
 .cse-chat-chip:hover { border-color: var(--gold, #c4a35a); }
 .cse-chat-thinking { opacity: 0.6; }
+
+.cse-chat-msg { display: flex; flex-direction: column; gap: 4px; max-width: 100%; }
+.cse-chat-msg.user { align-items: flex-end; }
+.cse-chat-msg.bot { align-items: flex-start; }
+.cse-chat-tools { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 2px; }
+.cse-chat-tr {
+  font-size: 11px;
+  color: var(--gold, #c4a35a);
+  text-decoration: none;
+  opacity: 0.9;
+}
+.cse-chat-tr:hover { text-decoration: underline; opacity: 1; }
