@@ -702,3 +702,14 @@ body.locked .cse-chat { display: none !important; }
   opacity: 0.9;
 }
 .cse-chat-tr:hover { text-decoration: underline; opacity: 1; }
+
+/* Dividends how-to */
+.div-howto { margin-bottom: 14px; }
+.div-steps { margin: 8px 0 10px; padding-left: 1.25rem; line-height: 1.55; font-size: 14px; }
+.div-steps li { margin-bottom: 6px; }
+.div-howto-note { font-size: 13px; color: var(--muted); margin: 0 0 10px; }
+.div-quick { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.div-quick-label { font-size: 12px; color: var(--muted); margin-right: 4px; }
+
+.div-amt { margin: 4px 0 2px; font-size: 14px; color: var(--gold, #c4a35a); }
+.div-amt.muted, .div-amt .muted, .div-amt.muted { color: var(--muted); font-weight: 400; font-size: 12px; }
