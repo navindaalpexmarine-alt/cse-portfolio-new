@@ -15,6 +15,7 @@
 import { commit, state } from '../core/store.js';
 import { DIV_PROFILE, MONTHS, SEASON } from '../data/reference.js';
 import { baseSym } from '../core/finance.js';
+import { parseDate } from '../core/dates.js';
 import { $, esc, fmt, fmtDate, fmtPct, num, safeUrl } from '../core/utils.js';
 import { emptyHtml, renderPreservingFocus, setBusy, toast, confirmDialog } from '../core/ui.js';
 import { cse, news } from '../core/api.js';
@@ -53,15 +54,9 @@ const posNum = (v) => {
 };
 
 /** Accepts ISO strings, "05 Nov 2026", epoch seconds/ms (number or digit string). */
+/** Any CSE / news date format → Date (see core/dates.js). */
 function toDate(v) {
-  if (v == null || v === '') return null;
-  if (v instanceof Date) return Number.isNaN(v.getTime()) ? null : v;
-  const s = String(v).trim();
-  let d;
-  if (/^\d{10}$/.test(s)) d = new Date(Number(s) * 1000);
-  else if (/^\d{13}$/.test(s)) d = new Date(Number(s));
-  else d = new Date(s);
-  return Number.isNaN(d.getTime()) ? null : d;
+  return parseDate(v);
 }
 const startOfToday = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
 const showDate = (v) => {

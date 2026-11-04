@@ -25,6 +25,7 @@ import { go } from '../core/router.js';
 import { computeRow, calcBes, sectorOf, normalizeSymbol } from '../core/finance.js';
 import { toast } from '../core/ui.js';
 import { recordTransaction } from './history.js';
+import { parseDate } from '../core/dates.js';
 
 /* =====================================================================
  * CONFIG — change these if needed
@@ -1148,15 +1149,9 @@ const DAY_MS = 86400000;
 const startOfToday = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
 
 /** Accepts ISO strings, "05 Nov 2026", epoch seconds/ms. */
+/** Any CSE / news date format → Date (see core/dates.js). */
 function toDate(v) {
-  if (v == null || v === '') return null;
-  if (v instanceof Date) return Number.isNaN(v.getTime()) ? null : v;
-  const s = String(v).trim();
-  let d;
-  if (/^\d{10}$/.test(s)) d = new Date(Number(s) * 1000);
-  else if (/^\d{13}$/.test(s)) d = new Date(Number(s));
-  else d = new Date(s.replace(/^(\d{4}-\d{2}-\d{2}) (\d)/, '$1T$2'));
-  return Number.isNaN(d.getTime()) ? null : d;
+  return parseDate(v);
 }
 const showDate = (v) => {
   const d = toDate(v);

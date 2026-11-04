@@ -9,6 +9,7 @@ import { ensureMarketSymbols, populateSymbolSelects, resolveSymbol } from '../co
 import { go } from '../core/router.js';
 import { $, esc, fmt, fmtDate, fmtInt, fmtOr, fmtPct, safeUrl } from '../core/utils.js';
 import { emptyHtml, setBusy, toast } from '../core/ui.js';
+import { parseDate } from '../core/dates.js';
 
 let selected = '';
 let moversLoadedAt = 0;
@@ -226,11 +227,9 @@ const posNum = (v) => {
   const n = Number(String(v ?? '').replace(/,/g, ''));
   return Number.isFinite(n) && n > 0 ? n : null;
 };
+/** Any CSE / news date format → Date (see core/dates.js). */
 function toDate(v) {
-  if (v == null || v === '') return null;
-  const s = String(v).trim();
-  const d = /^\d{13}$/.test(s) ? new Date(Number(s)) : /^\d{10}$/.test(s) ? new Date(Number(s) * 1000) : new Date(s.replace(/^(\d{4}-\d{2}-\d{2}) (\d)/, '$1T$2'));
-  return Number.isNaN(d.getTime()) ? null : d;
+  return parseDate(v);
 }
 const dShort = (d) => (d ? d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—');
 
@@ -253,48 +252,58 @@ async function loadCompanyDividends(sym, price, name) {
     const c = String(r.company || '').toLowerCase().replace(/\b(plc|limited|ltd)\b/g, '').trim();
     return nm.length > 3 && c && (c.includes(nm) || nm.includes(c));
   }).map((r) => ({
-    dps: posNum(nonVoting ? (r.nonVotingDivPerShare ?? r.votingDivPerShare) : r.votingDivPerShare),
+    dps: posNum(nonVoting ? (r.nonVotingDivPerShare || r.votingDivPerShare) : r.votingDivPerShare),
     xd: toDate(r.xd),
     pay: toDate(r.payment || r.paymentDate),
     ann: toDate(r.dateOfAnnouncement),
+    kind: r.finalDividend ? 'Final' : r.firstAndFinal ? 'First & final' : r.typeFirstInt ? '1st interim' : r.typeSecondInt ? '2nd interim'
+      : r.typeThirdInt ? '3rd interim' : r.typeFourthInt ? '4th interim' : 'Dividend',
   })).filter((r) => {
-    const k = `${r.xd?.toISOString().slice(0, 10) || r.ann?.toISOString().slice(0, 10)}|${r.dps}`;
+    const k = `${(r.xd || r.ann)?.toISOString().slice(0, 10)}|${r.dps}`;
     if (seen.has(k)) return false;
     seen.add(k);
     return r.dps || r.xd;
   }).sort((a, b) => (b.xd || b.ann || 0) - (a.xd || a.ann || 0));
 
+  const hold = state.holdings.find((h) => h.name === sym);
+  const avgDps = Number(hold?.avgDps) || 0;
+  const yearly = avgDps > 0 && price > 0
+    ? metric('Yearly yield (your Avg DPS)', `${((avgDps / price) * 100).toFixed(2)}%`, `Rs ${fmt(avgDps)} a year ÷ Rs ${fmt(price)} · before tax`, (avgDps / price) * 100 >= 5 ? 'good' : '', 't-gold')
+    : metric('Yearly yield', '—', 'Set “Avg DPS” for this share in the Dividends tab to see it', '', 'sm');
+  const feedNote = 'The CSE feed lists recent announcements only (roughly the last few weeks). Full history: “Dividends ↗” above.';
+
   if (!rows.length) {
-    box.innerHTML = emptyHtml(`No cash dividends for ${esc(base)} in the current CSE feed. Older years: use the “Dividends ↗” link above.`, true);
+    box.innerHTML = `<div class="metric-grid">${metric('Recent CSE announcements', 'None', `No cash dividend from ${esc(base)} in the current feed`, '', 'sm')}${yearly}</div>
+      <div class="legend">${feedNote} <button type="button" class="btn ghost sm" id="fundToDivBtn">Dividends tab →</button></div>`;
+    $('#fundToDivBtn')?.addEventListener('click', () => go('div'));
     return;
   }
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const yearAgo = new Date(today.getTime() - 365 * 86400000);
-  const past12 = rows.filter((r) => r.dps && (r.xd || r.ann) && (r.xd || r.ann) <= today && (r.xd || r.ann) >= yearAgo);
-  const upcoming = rows.filter((r) => r.xd && r.xd > today).sort((a, b) => a.xd - b.xd);
-  const ttm = past12.reduce((s, r) => s + r.dps, 0);
-  const yieldPct = ttm && price > 0 ? (ttm / price) * 100 : null;
+  const latest = rows[0];
+  const upcoming = rows.filter((r) => r.xd && r.xd >= today).sort((a, b) => a.xd - b.xd);
   const next = upcoming[0];
-  const hold = state.holdings.find((h) => h.name === sym);
   const nextIncome = next?.dps && hold?.balance ? next.dps * hold.balance : null;
+  const pctOf = (dps) => (dps && price > 0 ? ((dps / price) * 100).toFixed(2) + '%' : '—');
 
   box.innerHTML = `
     <div class="metric-grid">
-      ${metric('Dividends · last 12m', ttm ? `Rs ${fmt(ttm)}` : '—', `${past12.length} payment${past12.length === 1 ? '' : 's'} per share`)}
-      ${metric('Dividend yield', yieldPct != null ? yieldPct.toFixed(2) + '%' : '—', yieldPct != null ? `at Rs ${fmt(price)} · before tax` : 'needs a dividend in the last 12 months', yieldPct != null && yieldPct >= 5 ? 'good' : '', 't-gold')}
-      ${metric('Next XD', next ? dShort(next.xd) : '—', next ? `Rs ${fmt(next.dps)} / share${next.pay ? ' · pay ' + dShort(next.pay) : ''}` : 'none announced', next ? 'good' : '', 'sm')}
+      ${metric('Latest dividend', latest.dps ? `Rs ${fmt(latest.dps)}` : '—', `${esc(latest.kind)} · XD ${dShort(latest.xd)}${latest.pay ? ' · pay ' + dShort(latest.pay) : ''}`)}
+      ${metric('Latest as % of price', pctOf(latest.dps), 'one payment · before tax', '', 'sm')}
+      ${metric('Next XD', next ? dShort(next.xd) : '—', next ? `Rs ${fmt(next.dps)} / share${next.pay ? ' · pay ' + dShort(next.pay) : ''}` : 'none upcoming in the feed', next ? 'good' : '', 'sm')}
       ${nextIncome != null ? metric('Your next dividend', `Rs ${fmt(nextIncome)}`, `${fmtInt(hold.balance)} shares × Rs ${fmt(next.dps)} · own before XD`, 'good', 'sm') : ''}
+      ${yearly}
     </div>
     <div class="table-wrap"><table class="data-table div-mini">
-      <thead><tr><th class="left">XD date</th><th>DPS (Rs)</th><th>Yield now</th><th class="left">Payment</th></tr></thead>
-      <tbody>${rows.slice(0, 6).map((r) => `<tr class="${r.xd && r.xd > today ? 'upcoming' : ''}">
-        <td class="left">${dShort(r.xd || r.ann)}${r.xd && r.xd > today ? ' <span class="badge soon">UPCOMING</span>' : ''}</td>
+      <thead><tr><th class="left">XD date</th><th class="left">Type</th><th>DPS (Rs)</th><th>% of price</th><th class="left">Payment</th></tr></thead>
+      <tbody>${rows.slice(0, 6).map((r) => `<tr class="${r.xd && r.xd >= today ? 'upcoming' : ''}">
+        <td class="left">${dShort(r.xd || r.ann)}${r.xd && r.xd >= today ? ' <span class="badge soon">UPCOMING</span>' : ''}</td>
+        <td class="left">${esc(r.kind)}</td>
         <td>${r.dps ? fmt(r.dps) : '—'}</td>
-        <td>${r.dps && price > 0 ? ((r.dps / price) * 100).toFixed(2) + '%' : '—'}</td>
+        <td>${pctOf(r.dps)}</td>
         <td class="left">${dShort(r.pay)}</td></tr>`).join('')}</tbody>
     </table></div>
-    <div class="legend">Yield = dividends paid in the last 12 months ÷ today’s price. Past dividends don’t guarantee future ones; confirm XD dates on cse.lk.
+    <div class="legend">${feedNote} Past dividends don’t guarantee future ones; confirm XD dates on cse.lk.
       <button type="button" class="btn ghost sm" id="fundToDivBtn">Dividends tab →</button></div>`;
   $('#fundToDivBtn')?.addEventListener('click', () => go('div'));
 }

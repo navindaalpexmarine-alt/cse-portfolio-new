@@ -5,6 +5,7 @@
 import { cse, news } from '../core/api.js';
 import { emit, state } from '../core/store.js';
 import { go } from '../core/router.js';
+import { timeOf } from '../core/dates.js';
 import { baseSym } from '../core/finance.js';
 import { $, $$, debounce, esc, fmtDate, safeUrl, timeHM } from '../core/utils.js';
 import { emptyHtml, setBusy } from '../core/ui.js';
@@ -64,13 +65,6 @@ function markVisit() {
     localStorage.setItem(SEEN_KEY, String(Date.now()));
   } catch { seenBefore = 0; }
 }
-/** Robust date parse ("2026-11-03 10:22:11" also works in Safari). */
-const timeOf = (v) => {
-  if (v == null || v === '') return 0;
-  if (/^\d{13}$/.test(String(v))) return Number(v);
-  const t = Date.parse(String(v).trim().replace(/^(\d{4}-\d{2}-\d{2}) (\d)/, '$1T$2'));
-  return Number.isNaN(t) ? 0 : t;
-};
 const isNew = (it) => seenBefore > 0 && timeOf(it.pubDate) > seenBefore;
 
 /** Loads every source in parallel. Concurrent callers share one request. */
