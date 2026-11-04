@@ -758,6 +758,40 @@ body.locked .cse-chat { display: none !important; }
   .cse-chat-thinking span, .cse-chat-mic.rec { animation: none; }
 }
 
+/* ---- Chatbot robot (3D-style, animated) ---- */
+.cse-chat-fab {
+  width: 60px; height: 60px; padding: 4px; font-size: 0;
+  display: grid; place-items: center; overflow: visible;
+  background: radial-gradient(circle at 35% 30%, #2b3646, #0b0f14 72%);
+  border: 2px solid var(--gold, #D4AF37);
+  box-shadow: 0 10px 26px rgba(0,0,0,.35), 0 0 0 4px rgba(212,175,55,.14), inset 0 2px 6px rgba(255,255,255,.08);
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.cse-chat-fab:hover { filter: none; transform: translateY(-2px) scale(1.06); box-shadow: 0 14px 30px rgba(0,0,0,.4), 0 0 0 6px rgba(212,175,55,.22); }
+.cse-chat-fab:focus-visible { outline: 3px solid var(--gold, #D4AF37); outline-offset: 3px; }
+.cse-bot { width: 50px; height: 50px; overflow: visible; }
+.cse-bot .rb-body { transform-box: view-box; transform-origin: 32px 50px; animation: rbFloat 3.4s ease-in-out infinite; }
+.cse-bot .rb-shadow { transform-box: fill-box; transform-origin: center; animation: rbShadow 3.4s ease-in-out infinite; }
+.cse-bot .rb-eyes { transform-box: fill-box; transform-origin: center; animation: rbBlink 4.6s infinite, rbLook 9s ease-in-out infinite; }
+.cse-bot .rb-bulb { animation: rbPulse 1.8s ease-in-out infinite; }
+.cse-bot .rb-antenna { transform-box: view-box; transform-origin: 32px 14px; animation: rbWiggle 3.4s ease-in-out infinite; }
+.cse-chat-fab:hover .cse-bot .rb-body { animation: rbHello .9s ease-in-out infinite; }
+@keyframes rbFloat { 0%, 100% { transform: translateY(1px) rotate(-5deg); } 50% { transform: translateY(-3px) rotate(5deg); } }
+@keyframes rbShadow { 0%, 100% { transform: scaleX(1); opacity: .28; } 50% { transform: scaleX(.78); opacity: .16; } }
+@keyframes rbBlink { 0%, 90%, 100% { transform: scaleY(1); } 94% { transform: scaleY(.12); } }
+@keyframes rbLook { 0%, 35%, 100% { translate: 0 0; } 42%, 55% { translate: -2px 0; } 62%, 75% { translate: 2px -0.5px; } }
+@keyframes rbPulse { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
+@keyframes rbWiggle { 0%, 100% { transform: rotate(6deg); } 50% { transform: rotate(-6deg); } }
+@keyframes rbHello { 0%, 100% { transform: rotate(-10deg) translateY(-1px); } 50% { transform: rotate(10deg) translateY(-3px); } }
+.cse-chat-panel { bottom: 92px; }
+@media (max-width: 640px) { .cse-chat-panel { bottom: 88px; max-height: calc(100vh - 104px); } }
+.cse-bot-mini { width: 30px; height: 30px; flex: none; margin-right: 2px; overflow: visible; }
+.cse-bot-mini .rb-shadow { display: none; }
+.cse-bot-mini .rb-eyes { transform-box: fill-box; transform-origin: center; animation: rbBlink 4.6s infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .cse-bot .rb-body, .cse-bot .rb-shadow, .cse-bot .rb-eyes, .cse-bot .rb-bulb, .cse-bot .rb-antenna, .cse-bot-mini .rb-eyes { animation: none; }
+}
+
 /* Dividends how-to */
 .div-howto { margin-bottom: 14px; }
 .div-steps { margin: 8px 0 10px; padding-left: 1.25rem; line-height: 1.55; font-size: 14px; }
