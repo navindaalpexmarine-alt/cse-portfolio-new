@@ -703,6 +703,61 @@ body.locked .cse-chat { display: none !important; }
 }
 .cse-chat-tr:hover { text-decoration: underline; opacity: 1; }
 
+/* ---- Help chatbot v2 additions ---- */
+.cse-chat-panel { width: min(400px, calc(100vw - 24px)); max-height: min(640px, calc(100vh - 100px)); }
+.cse-chat-msgs { overscroll-behavior: contain; min-height: 160px; }
+.cse-chat-title { flex: 1; display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
+.cse-chat-title strong { flex: none; }
+.cse-chat-status { font-size: 11px; color: var(--muted); }
+.cse-chat-status.open { color: var(--pos); }
+.cse-chat-headbtns { display: flex; align-items: center; gap: 2px; }
+.cse-chat-iconbtn {
+  border: none; background: transparent; color: var(--muted); cursor: pointer;
+  font-size: 14px; padding: 4px 6px; border-radius: 6px;
+}
+.cse-chat-iconbtn:hover { color: var(--ink); background: var(--gold-wash); }
+.cse-chat-bubble.bot { white-space: normal; overflow-wrap: anywhere; }
+.cse-chat-bubble strong { font-weight: 650; }
+.cse-chat-bubble .cse-chat-h { display: inline-block; margin: 2px 0; color: var(--gold); }
+.cse-chat-bubble a { color: var(--gold); }
+
+.cse-chat-thinking { opacity: 1; display: inline-flex; gap: 4px; align-items: center; padding: 11px 12px; }
+.cse-chat-thinking span { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); animation: cseChatDot 1s infinite ease-in-out; }
+.cse-chat-thinking span:nth-child(2) { animation-delay: .15s; }
+.cse-chat-thinking span:nth-child(3) { animation-delay: .3s; }
+@keyframes cseChatDot { 0%, 80%, 100% { opacity: .3; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
+
+.cse-chat-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.cse-chat-act {
+  font: inherit; font-size: 12px; padding: 4px 10px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--gold-dim); background: var(--gold-wash); color: var(--ink); text-decoration: none;
+}
+.cse-chat-act:hover { border-color: var(--gold); }
+.cse-chat-tool {
+  border: none; background: none; padding: 0; cursor: pointer; font: inherit; font-size: 11px;
+  color: var(--muted);
+}
+.cse-chat-tool:hover { color: var(--ink); text-decoration: underline; }
+
+.cse-chat-chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding: 8px 10px; flex: none; }
+.cse-chat-chips::-webkit-scrollbar { display: none; }
+.cse-chat-chips:empty { display: none; }
+.cse-chat-chip { white-space: nowrap; flex: none; }
+
+.cse-chat-mic {
+  border: 1px solid var(--line); background: transparent; border-radius: 10px;
+  padding: 0 9px; cursor: pointer; font-size: 15px;
+}
+.cse-chat-mic.rec { border-color: var(--neg); background: var(--neg-bg); animation: cseChatPulse 1.2s infinite; }
+@keyframes cseChatPulse { 50% { box-shadow: 0 0 0 3px var(--neg-bg); } }
+
+@media (max-width: 640px) {
+  .cse-chat-panel { right: 12px; bottom: 76px; max-height: calc(100vh - 92px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cse-chat-thinking span, .cse-chat-mic.rec { animation: none; }
+}
+
 /* Dividends how-to */
 .div-howto { margin-bottom: 14px; }
 .div-steps { margin: 8px 0 10px; padding-left: 1.25rem; line-height: 1.55; font-size: 14px; }
