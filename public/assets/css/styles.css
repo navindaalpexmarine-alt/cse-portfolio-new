@@ -772,13 +772,12 @@ body.locked .cse-chat { display: none !important; }
 .cse-bot { width: 50px; height: 50px; overflow: visible; }
 .cse-bot .rb-body { transform-box: view-box; transform-origin: 32px 50px; animation: rbFloat 3.4s ease-in-out infinite; }
 .cse-bot .rb-shadow { transform-box: fill-box; transform-origin: center; animation: rbShadow 3.4s ease-in-out infinite; }
-.cse-bot .rb-eyes { transform-box: fill-box; transform-origin: center; animation: rbBlink 4.6s infinite, rbLook 9s ease-in-out infinite; }
+.cse-bot .rb-eyes { animation: rbLook 9s ease-in-out infinite; } /* blinking is done with SVG <animate> (works in every browser) */
 .cse-bot .rb-bulb { animation: rbPulse 1.8s ease-in-out infinite; }
 .cse-bot .rb-antenna { transform-box: view-box; transform-origin: 32px 14px; animation: rbWiggle 3.4s ease-in-out infinite; }
 .cse-chat-fab:hover .cse-bot .rb-body { animation: rbHello .9s ease-in-out infinite; }
 @keyframes rbFloat { 0%, 100% { transform: translateY(1px) rotate(-5deg); } 50% { transform: translateY(-3px) rotate(5deg); } }
 @keyframes rbShadow { 0%, 100% { transform: scaleX(1); opacity: .28; } 50% { transform: scaleX(.78); opacity: .16; } }
-@keyframes rbBlink { 0%, 90%, 100% { transform: scaleY(1); } 94% { transform: scaleY(.12); } }
 @keyframes rbLook { 0%, 35%, 100% { translate: 0 0; } 42%, 55% { translate: -2px 0; } 62%, 75% { translate: 2px -0.5px; } }
 @keyframes rbPulse { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
 @keyframes rbWiggle { 0%, 100% { transform: rotate(6deg); } 50% { transform: rotate(-6deg); } }
@@ -787,9 +786,8 @@ body.locked .cse-chat { display: none !important; }
 @media (max-width: 640px) { .cse-chat-panel { bottom: 88px; max-height: calc(100vh - 104px); } }
 .cse-bot-mini { width: 30px; height: 30px; flex: none; margin-right: 2px; overflow: visible; }
 .cse-bot-mini .rb-shadow { display: none; }
-.cse-bot-mini .rb-eyes { transform-box: fill-box; transform-origin: center; animation: rbBlink 4.6s infinite; }
 @media (prefers-reduced-motion: reduce) {
-  .cse-bot .rb-body, .cse-bot .rb-shadow, .cse-bot .rb-eyes, .cse-bot .rb-bulb, .cse-bot .rb-antenna, .cse-bot-mini .rb-eyes { animation: none; }
+  .cse-bot .rb-body, .cse-bot .rb-shadow, .cse-bot .rb-eyes, .cse-bot .rb-bulb, .cse-bot .rb-antenna { animation: none; }
 }
 
 /* Dividends how-to */
