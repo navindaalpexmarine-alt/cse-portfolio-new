@@ -1,12 +1,14 @@
 /**
- * Technical view: TradingView embed + CSE price/volume chart, 52-week
- * position, relative volume, beta and classic floor-trader pivots.
+ * Technical view: TradingView embed + CSE price/volume chart with moving averages,
+ * RSI and a plain-language trend summary, 52-week position, relative volume,
+ * beta and classic floor-trader pivots.
  */
 import { cse } from '../core/api.js';
 import { state } from '../core/store.js';
 import { baseSym, normalizeSymbol } from '../core/finance.js';
 import { ensureMarketSymbols, populateSymbolSelects, resolveSymbol } from '../core/symbols.js';
 import { ensureChart } from '../core/loader.js';
+import { analyze } from '../core/indicators.js';
 import { $, cssVar, esc, fmt, fmtInt, fmtPct } from '../core/utils.js';
 import { emptyHtml, setBusy, toast } from '../core/ui.js';
 
@@ -82,7 +84,7 @@ export async function loadTechnicals(symOverride) {
     if (stockId != null) {
       const ch = await cse('companyChartDataByStock', { stockId, period });
       const raw = ch.chartData || ch.reqTradeSummery?.chartData || [];
-      points = Array.isArray(raw) ? raw : [];
+      points = (Array.isArray(raw) ? raw : []).filter((p) => Number(p.p ?? p.c) > 0);
     }
   } catch (err) { console.warn('chart data', err); }
   setBusy(btn, false);
@@ -95,11 +97,38 @@ export async function loadTechnicals(symOverride) {
   const betaV = Number(beta.triASIBetaValue) ? Number(beta.triASIBetaValue) : null; // 0 = not calculated
   const chgPct = Number(info.changePercentage || 0);
 
+  // Moving averages + RSI need daily or weekly bars (not intraday ticks).
+  const ind = period === '5' || period === '2'
+    ? analyze(points.map((p) => Number(p.p ?? p.c)), { price, unit: period === '2' ? 'week' : 'day' })
+    : null;
+
   let trend = 'neut', trendLabel = 'Neutral / range';
-  if (pos52 > 70 && chgPct >= 0) { trend = 'bull'; trendLabel = 'Near highs'; }
+  if (ind) { trend = ind.trend; trendLabel = ind.label.en; }
+  else if (pos52 > 70 && chgPct >= 0) { trend = 'bull'; trendLabel = 'Near highs'; }
   else if (pos52 < 30 && chgPct <= 0) { trend = 'bear'; trendLabel = 'Near lows'; }
   else if (pos52 > 55) { trend = 'bull'; trendLabel = 'Above mid-range'; }
   else if (pos52 < 45) { trend = 'bear'; trendLabel = 'Below mid-range'; }
+  const unit = period === '2' ? 'wk' : 'd';
+  const vsMa = (ma) => (ma == null ? '' : price >= ma ? `<span class="t-pos">price above ▲ ${(((price - ma) / ma) * 100).toFixed(1)}%</span>` : `<span class="t-neg">price below ▼ ${(((price - ma) / ma) * 100).toFixed(1)}%</span>`);
+  const rsiTxt = (x) => (x == null ? '' : x >= 70 ? 'overbought' : x <= 30 ? 'oversold' : x >= 50 ? 'positive momentum' : 'weak momentum');
+  const indHtml = !ind
+    ? `<div class="legend">${period === '1' ? 'Moving averages and RSI are shown on the Daily or Weekly chart.' : 'Not enough price history for moving averages / RSI.'}</div>`
+    : `
+      <div class="section-title">Trend summary · ${ind.bars} ${period === '2' ? 'weeks' : 'trading days'} of data</div>
+      <div class="ind-summary ${ind.trend}">
+        <div class="ind-head"><span class="tech-signal ${ind.trend}">${esc(ind.label.en)}</span></div>
+        <ul>${ind.points.map((pt) => `<li class="${pt.tone}"><span>${esc(pt.en)}</span></li>`).join('')}</ul>
+        <div class="legend">Rule-based reading of the averages and RSI — a hint for your own research, not a buy/sell signal.</div>
+      </div>
+
+      <div class="section-title">Moving averages · RSI</div>
+      <div class="metric-grid">
+        ${metric(`SMA 20${unit}`, ind.sma20 != null ? `Rs ${fmt(ind.sma20)}` : '—', vsMa(ind.sma20), '', 'sm')}
+        ${metric(`SMA 50${unit}`, ind.sma50 != null ? `Rs ${fmt(ind.sma50)}` : '—', ind.sma50 != null ? vsMa(ind.sma50) : `needs 50 ${period === '2' ? 'weeks' : 'days'} of data`, '', 'sm')}
+        ${metric(`SMA 200${unit}`, ind.sma200 != null ? `Rs ${fmt(ind.sma200)}` : '—', ind.sma200 != null ? vsMa(ind.sma200) : `needs 200 ${period === '2' ? 'weeks' : 'days'} of data`, '', 'sm')}
+        ${metric('RSI (14)', ind.rsi != null ? ind.rsi.toFixed(0) : '—', `${rsiTxt(ind.rsi)}${ind.rsi != null ? `<div class="rsi-bar" role="img" aria-label="RSI ${ind.rsi.toFixed(0)} of 100"><i style="left:${Math.max(0, Math.min(100, ind.rsi))}%"></i></div>` : ''}`, ind.rsi != null && ind.rsi <= 30 ? 'good' : '', ind.rsi != null && (ind.rsi >= 70 || ind.rsi <= 30) ? 't-gold' : '')}
+      </div>
+      ${ind.returns.length ? `<div class="ret-row">${ind.returns.map((r) => `<span class="ret ${r.v >= 0 ? 't-pos' : 't-neg'}"><b>${r.k}</b> ${r.v >= 0 ? '+' : ''}${r.v.toFixed(1)}%</span>`).join('')}</div>` : ''}`;
 
   // Classic pivots from today's range.
   const pivot = (dayHi + dayLo + price) / 3;
@@ -118,6 +147,8 @@ export async function loadTechnicals(symOverride) {
       <div class="section-title">Price chart · ${PERIOD_LABEL[period] || 'Daily'}</div>
       <div class="chart-box" style="height:280px"><canvas id="techPriceChart" role="img" aria-label="Price chart for ${esc(sym)}"></canvas></div>
       <div class="chart-box" style="height:110px;margin-top:6px"><canvas id="techVolChart" role="img" aria-label="Volume chart for ${esc(sym)}"></canvas></div>
+      ${ind ? '<div class="ma-legend"><span class="k close">Close</span><span class="k ma20">SMA 20</span><span class="k ma50">SMA 50</span><span class="k ma200">SMA 200</span></div>' : ''}
+      ${indHtml}
 
       <div class="section-title">Price · 52-week</div>
       <div class="metric-grid">
@@ -147,10 +178,13 @@ export async function loadTechnicals(symOverride) {
       <div class="legend">Rule-based levels for orientation only — not a buy/sell recommendation.</div>
     </div>`;
 
-  drawCharts(points.slice(-180), period);
+  const keep = 180;
+  drawCharts(points.slice(-keep), period, ind ? {
+    s20: ind.series.s20.slice(-keep), s50: ind.series.s50.slice(-keep), s200: ind.series.s200.slice(-keep),
+  } : null);
 }
 
-async function drawCharts(pts, period) {
+async function drawCharts(pts, period, ma = null) {
   priceChart?.destroy(); volChart?.destroy();
   priceChart = volChart = null;
   if (!pts.length) {
@@ -176,10 +210,20 @@ async function drawCharts(pts, period) {
 
   priceChart = new Chart($('#techPriceChart'), {
     type: 'line',
-    data: { labels, datasets: [{ label: 'Close', data: closes, borderColor: gold, backgroundColor: cssVar('--gold-wash'), fill: true, tension: 0.15, pointRadius: 0, borderWidth: 2 }] },
+    data: {
+      labels,
+      datasets: [
+        { label: 'Close', data: closes, borderColor: gold, backgroundColor: cssVar('--gold-wash'), fill: true, tension: 0.15, pointRadius: 0, borderWidth: 2 },
+        ...(ma ? [
+          { label: 'SMA 20', data: ma.s20, borderColor: cssVar('--blue'), fill: false, tension: 0.1, pointRadius: 0, borderWidth: 1.4, spanGaps: false },
+          { label: 'SMA 50', data: ma.s50, borderColor: cssVar('--pos'), fill: false, tension: 0.1, pointRadius: 0, borderWidth: 1.4, borderDash: [5, 3] },
+          { label: 'SMA 200', data: ma.s200, borderColor: cssVar('--neg'), fill: false, tension: 0.1, pointRadius: 0, borderWidth: 1.6, borderDash: [2, 3] },
+        ] : []),
+      ],
+    },
     options: {
       responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
-      plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ` Rs ${fmt(c.raw)}` } } },
+      plugins: { legend: { display: false }, tooltip: { filter: (c) => c.raw != null, callbacks: { label: (c) => ` ${c.dataset.label}: Rs ${fmt(c.raw)}` } } },
       scales: { x: { ticks: { maxTicksLimit: 8 }, grid: { display: false } }, y: { ticks: { maxTicksLimit: 6 } } },
     },
   });

@@ -1,10 +1,10 @@
 /**
- * Fundamentals view: market movers + full company snapshot for any CSE symbol
- * (price, market cap, beta, ranges, volumes, turnover, related news).
+ * Fundamentals view: watchlist, market movers + full company snapshot for any CSE symbol
+ * (price, market cap, beta, ranges, volumes, turnover, dividends & yield, related news).
  */
 import { cse, news } from '../core/api.js';
-import { state } from '../core/store.js';
-import { baseSym, sectorOf } from '../core/finance.js';
+import { commit, state } from '../core/store.js';
+import { baseSym, normalizeSymbol, sectorOf } from '../core/finance.js';
 import { ensureMarketSymbols, populateSymbolSelects, resolveSymbol } from '../core/symbols.js';
 import { go } from '../core/router.js';
 import { $, esc, fmt, fmtDate, fmtInt, fmtOr, fmtPct, safeUrl } from '../core/utils.js';
@@ -15,6 +15,59 @@ let moversLoadedAt = 0;
 
 const metric = (label, value, hint = '', cls = '', valCls = '') =>
   `<div class="metric ${cls}"><div class="m-label">${label}</div><div class="m-val ${valCls}">${value}</div>${hint ? `<div class="m-hint">${hint}</div>` : ''}</div>`;
+
+/* ---------- watchlist (synced with the account like the portfolio) ---------- */
+
+const inWatch = (sym) => state.watchlist.includes(sym);
+
+function toggleWatch(sym, on = !inWatch(sym)) {
+  if (!sym) return;
+  if (on && !inWatch(sym)) {
+    if (state.watchlist.length >= 100) { toast('Watchlist is full (100)', { error: true }); return; }
+    state.watchlist = [...state.watchlist, sym];
+    toast(`★ ${baseSym(sym)} added to watchlist`);
+  } else if (!on) {
+    state.watchlist = state.watchlist.filter((x) => x !== sym);
+    toast(`${baseSym(sym)} removed from watchlist`);
+  }
+  commit('watchlist');
+  renderWatchlist();
+  const b = $('#fundWatchBtn');
+  if (b && b.dataset.sym === sym) setWatchBtn(b, inWatch(sym));
+}
+
+function setWatchBtn(b, on) {
+  b.textContent = on ? '★ Watching' : '☆ Watch';
+  b.setAttribute('aria-pressed', String(on));
+  b.classList.toggle('on', on);
+}
+
+export function renderWatchlist() {
+  const box = $('#watchBox');
+  if (!box) return;
+  const list = state.watchlist;
+  if (!list.length) {
+    box.innerHTML = emptyHtml('Follow shares you don’t own yet: type a symbol above and press <b>+ Add</b>, or click <b>☆ Watch</b> on any company.', true);
+    return;
+  }
+  const own = new Set(state.holdings.map((h) => h.name));
+  box.innerHTML = `<div class="watch-grid">${list.map((sym) => {
+    const p = state.priceMap[sym] || {};
+    const m = state.market.find((x) => x.symbol === sym);
+    const price = p.price ?? m?.price;
+    const pct = Number(p.changePct);
+    const has = Number.isFinite(pct);
+    return `<div class="watch-card${has ? (pct >= 0 ? ' up' : ' down') : ''}">
+      <button type="button" class="watch-open" data-sym="${esc(sym)}" title="Load ${esc(sym)}">
+        <span class="w-sym">${esc(baseSym(sym))}${own.has(sym) ? ' <span class="badge port">OWN</span>' : ''}</span>
+        <span class="w-name">${esc(p.name || m?.name || sym)}</span>
+        <span class="w-price">${price != null ? 'Rs ' + fmt(price) : '—'}</span>
+        <span class="w-chg ${has ? (pct >= 0 ? 't-pos' : 't-neg') : 't-muted'}">${has ? (pct >= 0 ? '▲ +' : '▼ ') + pct.toFixed(2) + '%' : 'no trade today'}</span>
+      </button>
+      <button type="button" class="w-del" data-unwatch="${esc(sym)}" aria-label="Remove ${esc(baseSym(sym))} from watchlist">×</button>
+    </div>`;
+  }).join('')}</div>`;
+}
 
 /* ---------- market movers ---------- */
 
@@ -93,6 +146,7 @@ export async function loadFundamentals(symOverride) {
         <div class="panel-actions">
           <a class="btn ghost" target="_blank" rel="noopener" href="https://www.cse.lk/pages/company-profile/company-profile.component.html?symbol=${encodeURIComponent(sym)}">CSE profile ↗</a>
           <a class="btn ghost" target="_blank" rel="noopener" href="https://stockdividends.iamsupun.com/stocks/${encodeURIComponent(baseSym(sym))}/">Dividends ↗</a>
+          <button class="btn ghost watch-toggle" type="button" id="fundWatchBtn" data-sym="${esc(sym)}" aria-pressed="false">☆ Watch</button>
           <button class="btn ghost" type="button" id="fundToTechBtn">Technical →</button>
         </div>
       </div>
@@ -106,6 +160,9 @@ export async function loadFundamentals(symOverride) {
       </div>
       ${pos52 != null ? `<div class="range-bar" role="img" aria-label="52-week position ${pos52.toFixed(0)}%"><div class="fill"></div><div class="dot" style="left:${Math.max(0, Math.min(100, pos52))}%"></div></div>
       <div class="range-labels"><span>52w L ${fmt(lo52)}</span><span>${fmt(price)}</span><span>52w H ${fmt(hi52)}</span></div>` : ''}
+
+      <div class="section-title">Dividends · yield <span class="t-muted" style="font-weight:400">(CSE cash-dividend announcements)</span></div>
+      <div id="fundDivBox">${emptyHtml('Loading dividends…', true)}</div>
 
       <div class="section-title">Price ranges</div>
       <div class="metric-grid">
@@ -142,7 +199,104 @@ export async function loadFundamentals(symOverride) {
     </div>`;
 
   $('#fundToTechBtn').addEventListener('click', () => go('tech', { sym }));
+  const wb = $('#fundWatchBtn');
+  setWatchBtn(wb, inWatch(sym));
+  wb.addEventListener('click', () => toggleWatch(sym));
+  loadCompanyDividends(sym, Number(price), info.name);
   loadCompanyNews(sym, info.name);
+}
+
+/* ---------- dividends & yield ---------- */
+
+let divCache = { at: 0, rows: null, p: null };
+/** CSE cash-dividend list (shared, cached 10 min). */
+function cashDividendList() {
+  if (divCache.rows && Date.now() - divCache.at < 600000) return Promise.resolve(divCache.rows);
+  if (!divCache.p) {
+    divCache.p = cse('cashDividends').then((d) => {
+      const rows = Array.isArray(d?.cashDividends) ? d.cashDividends : [];
+      divCache = { at: Date.now(), rows, p: null };
+      return rows;
+    }).catch((err) => { divCache.p = null; throw err; });
+  }
+  return divCache.p;
+}
+
+const posNum = (v) => {
+  const n = Number(String(v ?? '').replace(/,/g, ''));
+  return Number.isFinite(n) && n > 0 ? n : null;
+};
+function toDate(v) {
+  if (v == null || v === '') return null;
+  const s = String(v).trim();
+  const d = /^\d{13}$/.test(s) ? new Date(Number(s)) : /^\d{10}$/.test(s) ? new Date(Number(s) * 1000) : new Date(s.replace(/^(\d{4}-\d{2}-\d{2}) (\d)/, '$1T$2'));
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+const dShort = (d) => (d ? d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—');
+
+async function loadCompanyDividends(sym, price, name) {
+  const box = $('#fundDivBox');
+  let all;
+  try { all = await cashDividendList(); } catch {
+    if (box?.isConnected) box.innerHTML = emptyHtml('CSE dividend list is unavailable right now — try again later or open the Dividends tab.', true);
+    return;
+  }
+  if (selected !== sym || !box?.isConnected) return;
+
+  const base = baseSym(sym);
+  const nonVoting = /\.X\d{4}$/i.test(sym);
+  const nm = String(name || '').toLowerCase().replace(/\b(plc|limited|ltd)\b/g, '').replace(/\s+/g, ' ').trim();
+  const seen = new Set();
+  const rows = all.filter((r) => {
+    const b = baseSym(r.symbol || '');
+    if (b) return b === base;
+    const c = String(r.company || '').toLowerCase().replace(/\b(plc|limited|ltd)\b/g, '').trim();
+    return nm.length > 3 && c && (c.includes(nm) || nm.includes(c));
+  }).map((r) => ({
+    dps: posNum(nonVoting ? (r.nonVotingDivPerShare ?? r.votingDivPerShare) : r.votingDivPerShare),
+    xd: toDate(r.xd),
+    pay: toDate(r.payment || r.paymentDate),
+    ann: toDate(r.dateOfAnnouncement),
+  })).filter((r) => {
+    const k = `${r.xd?.toISOString().slice(0, 10) || r.ann?.toISOString().slice(0, 10)}|${r.dps}`;
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return r.dps || r.xd;
+  }).sort((a, b) => (b.xd || b.ann || 0) - (a.xd || a.ann || 0));
+
+  if (!rows.length) {
+    box.innerHTML = emptyHtml(`No cash dividends for ${esc(base)} in the current CSE feed. Older years: use the “Dividends ↗” link above.`, true);
+    return;
+  }
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yearAgo = new Date(today.getTime() - 365 * 86400000);
+  const past12 = rows.filter((r) => r.dps && (r.xd || r.ann) && (r.xd || r.ann) <= today && (r.xd || r.ann) >= yearAgo);
+  const upcoming = rows.filter((r) => r.xd && r.xd > today).sort((a, b) => a.xd - b.xd);
+  const ttm = past12.reduce((s, r) => s + r.dps, 0);
+  const yieldPct = ttm && price > 0 ? (ttm / price) * 100 : null;
+  const next = upcoming[0];
+  const hold = state.holdings.find((h) => h.name === sym);
+  const nextIncome = next?.dps && hold?.balance ? next.dps * hold.balance : null;
+
+  box.innerHTML = `
+    <div class="metric-grid">
+      ${metric('Dividends · last 12m', ttm ? `Rs ${fmt(ttm)}` : '—', `${past12.length} payment${past12.length === 1 ? '' : 's'} per share`)}
+      ${metric('Dividend yield', yieldPct != null ? yieldPct.toFixed(2) + '%' : '—', yieldPct != null ? `at Rs ${fmt(price)} · before tax` : 'needs a dividend in the last 12 months', yieldPct != null && yieldPct >= 5 ? 'good' : '', 't-gold')}
+      ${metric('Next XD', next ? dShort(next.xd) : '—', next ? `Rs ${fmt(next.dps)} / share${next.pay ? ' · pay ' + dShort(next.pay) : ''}` : 'none announced', next ? 'good' : '', 'sm')}
+      ${nextIncome != null ? metric('Your next dividend', `Rs ${fmt(nextIncome)}`, `${fmtInt(hold.balance)} shares × Rs ${fmt(next.dps)} · own before XD`, 'good', 'sm') : ''}
+    </div>
+    <div class="table-wrap"><table class="data-table div-mini">
+      <thead><tr><th class="left">XD date</th><th>DPS (Rs)</th><th>Yield now</th><th class="left">Payment</th></tr></thead>
+      <tbody>${rows.slice(0, 6).map((r) => `<tr class="${r.xd && r.xd > today ? 'upcoming' : ''}">
+        <td class="left">${dShort(r.xd || r.ann)}${r.xd && r.xd > today ? ' <span class="badge soon">UPCOMING</span>' : ''}</td>
+        <td>${r.dps ? fmt(r.dps) : '—'}</td>
+        <td>${r.dps && price > 0 ? ((r.dps / price) * 100).toFixed(2) + '%' : '—'}</td>
+        <td class="left">${dShort(r.pay)}</td></tr>`).join('')}</tbody>
+    </table></div>
+    <div class="legend">Yield = dividends paid in the last 12 months ÷ today’s price. Past dividends don’t guarantee future ones; confirm XD dates on cse.lk.
+      <button type="button" class="btn ghost sm" id="fundToDivBtn">Dividends tab →</button></div>`;
+  $('#fundToDivBtn')?.addEventListener('click', () => go('div'));
 }
 
 async function loadCompanyNews(sym, name) {
@@ -167,6 +321,28 @@ async function loadCompanyNews(sym, name) {
 
 export function init() {
   $('#fundForm').addEventListener('submit', (e) => { e.preventDefault(); loadFundamentals(); });
+  $('#watchAddForm')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const inp = $('#watchAddInput');
+    const raw = inp.value.trim();
+    if (!raw) return;
+    let sym = resolveSymbol(inp, null);
+    if (sym && !sym.includes('.')) sym = normalizeSymbol(sym);
+    if (state.market.length && !state.market.some((x) => x.symbol === sym)) {
+      toast(`${sym} is not in today’s CSE list — added anyway`, { ms: 3500 });
+    }
+    toggleWatch(sym, true);
+    inp.value = '';
+  });
+  $('#watchBox')?.addEventListener('click', (e) => {
+    const del = e.target.closest('[data-unwatch]');
+    if (del) { toggleWatch(del.dataset.unwatch, false); return; }
+    const open = e.target.closest('.watch-open[data-sym]');
+    if (open) {
+      loadFundamentals(open.dataset.sym);
+      $('#fundForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  });
   $('#fundSymbol').addEventListener('change', (e) => { $('#fundSearch').value = e.target.value; });
   $('#fundRefreshSymBtn').addEventListener('click', async () => {
     await ensureMarketSymbols(true);
@@ -184,11 +360,18 @@ export function init() {
 }
 
 export async function show(params) {
+  renderWatchlist();
   loadMovers();
   await ensureMarketSymbols(false);
   populateSymbolSelects();
+  renderWatchlist();
   const sym = params?.sym || (selected && !$('#fundContent .panel') ? selected : '');
   if (sym) loadFundamentals(sym);
 }
 
-export default { init, show };
+/** Called by the router when data changes while this tab is open (live prices, sync…). */
+export function onData(topic) {
+  if (['prices', 'all', 'watchlist', 'holdings'].includes(topic)) renderWatchlist();
+}
+
+export default { init, show, onData };
