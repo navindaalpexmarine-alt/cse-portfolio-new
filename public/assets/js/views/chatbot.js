@@ -1391,8 +1391,8 @@ function robotSvg(k = 'a', cls = 'cse-bot') {
     <rect x="16.5" y="22" width="31" height="19" rx="9" fill="url(#rb-visor-${k})"/>
     <path d="M20 25.5c3-2.4 9-3 14-2.6" stroke="#fff" stroke-opacity=".28" stroke-width="1.6" fill="none" stroke-linecap="round"/>
     <g class="rb-eyes" filter="url(#rb-glow-${k})">
-      <ellipse cx="25.5" cy="31" rx="3.3" ry="4" fill="url(#rb-eye-${k})"/>
-      <ellipse cx="38.5" cy="31" rx="3.3" ry="4" fill="url(#rb-eye-${k})"/>
+      <ellipse cx="25.5" cy="31" rx="3.3" ry="4" fill="url(#rb-eye-${k})"><animate attributeName="ry" dur="5s" repeatCount="indefinite" values="4;4;0.4;4;4;0.4;4;0.4;4;4" keyTimes="0;0.36;0.4;0.45;0.8;0.83;0.87;0.9;0.94;1"/></ellipse>
+      <ellipse cx="38.5" cy="31" rx="3.3" ry="4" fill="url(#rb-eye-${k})"><animate attributeName="ry" dur="5s" repeatCount="indefinite" values="4;4;0.4;4;4;0.4;4;0.4;4;4" keyTimes="0;0.36;0.4;0.45;0.8;0.83;0.87;0.9;0.94;1"/></ellipse>
     </g>
     <path d="M28.5 37.2q3.5 2.4 7 0" stroke="#ffd24a" stroke-width="1.4" fill="none" stroke-linecap="round" opacity=".85"/>
     <circle cx="18.5" cy="44" r="2.4" fill="#ff8fa3" opacity=".45"/>
@@ -1468,6 +1468,11 @@ export function initChatbot() {
 
   const fab = el('button', 'cse-chat-fab');
   fab.innerHTML = robotSvg('fab'); // static markup, no user data
+  try {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      requestAnimationFrame(() => root.querySelectorAll('svg.cse-bot, svg.cse-bot-mini').forEach((svg) => svg.pauseAnimations?.()));
+    }
+  } catch { /* ignore */ }
   fab.type = 'button';
   fab.setAttribute('aria-label', 'Open help chat');
   fab.setAttribute('aria-expanded', 'false');
