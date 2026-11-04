@@ -10,7 +10,7 @@
  *
  * Bump VERSION when the precache list changes.
  */
-const VERSION = 'v3.1.0';
+const VERSION = 'v3.2.0';
 const CACHE = `cse-portfolio-${VERSION}`;
 
 const SHELL = [
@@ -36,6 +36,7 @@ const SHELL = [
   'assets/js/data/reference.js',
   'assets/js/views/auth.js',
   'assets/js/views/calculator.js',
+  'assets/js/views/chatbot.js',
   'assets/js/views/charts.js',
   'assets/js/views/dividends.js',
   'assets/js/views/fundamentals.js',
