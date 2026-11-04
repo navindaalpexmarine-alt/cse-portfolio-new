@@ -800,3 +800,4 @@ body.locked .cse-chat { display: none !important; }
 
 .div-amt { margin: 4px 0 2px; font-size: 14px; color: var(--gold, #c4a35a); }
 .div-amt.muted, .div-amt .muted, .div-amt.muted { color: var(--muted); font-weight: 400; font-size: 12px; }
+.table-wrap { position: relative; }
