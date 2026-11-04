@@ -751,6 +751,24 @@ body.locked .cse-chat { display: none !important; }
 .cse-chat-mic.rec { border-color: var(--neg); background: var(--neg-bg); animation: cseChatPulse 1.2s infinite; }
 @keyframes cseChatPulse { 50% { box-shadow: 0 0 0 3px var(--neg-bg); } }
 
+.cse-chat-act.primary { background: var(--gold); color: #0b0f14; border-color: var(--gold); font-weight: 600; }
+.cse-chat-act:disabled { opacity: .6; cursor: default; }
+.cse-chat-bubble.ai { border-style: dashed; }
+.cse-chat-aitag { font-size: 11px; color: var(--gold); font-weight: 600; }
+.cse-chat-spark { display: block; width: 100%; max-width: 260px; height: 48px; margin-top: 8px; }
+.cse-chat-spark .l { fill: none; stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }
+.cse-chat-spark.up .l { stroke: var(--pos); }
+.cse-chat-spark.down .l { stroke: var(--neg); }
+.cse-chat-spark.up .a { fill: var(--pos-bg); }
+.cse-chat-spark.down .a { fill: var(--neg-bg); }
+.cse-chat-spark.up .d { fill: var(--pos); }
+.cse-chat-spark.down .d { fill: var(--neg); }
+.cse-chat-fab { position: fixed; }
+.cse-chat-fab.has-dot::after {
+  content: ''; position: absolute; top: 4px; right: 4px; width: 11px; height: 11px;
+  border-radius: 50%; background: var(--neg); border: 2px solid var(--panel);
+}
+
 @media (max-width: 640px) {
   .cse-chat-panel { right: 12px; bottom: 76px; max-height: calc(100vh - 92px); }
 }

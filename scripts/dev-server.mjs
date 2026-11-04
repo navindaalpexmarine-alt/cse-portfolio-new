@@ -17,6 +17,7 @@ import { handleCse } from '../lib/cse.js';
 import { handleNews } from '../lib/news.js';
 import { handleAuth } from '../lib/auth.js';
 import { handleData } from '../lib/userdata.js';
+import { handleChat } from '../lib/chat.js';
 import { nodeRequest, paramsFromUrl, privateJson, sendNode } from '../lib/http.js';
 
 const ROOT = resolve(fileURLToPath(new URL('../public', import.meta.url)));
@@ -65,13 +66,14 @@ const server = createServer(async (req, res) => {
   try {
     if (pathname === '/api/cse') sendNode(res, await handleCse(req.method, paramsFromUrl(req.url)));
     else if (pathname === '/api/news') sendNode(res, await handleNews(req.method, paramsFromUrl(req.url)));
-    else if (pathname === '/api/auth' || pathname === '/api/data') {
+    else if (pathname === '/api/auth' || pathname === '/api/data' || pathname === '/api/chat') {
       let request;
       try { request = await nodeRequest(req); } catch (err) {
         sendNode(res, privateJson(err.status || 400, { error: 'bad_request', message: err.message }));
         return;
       }
-      sendNode(res, await (pathname === '/api/auth' ? handleAuth(request) : handleData(request)));
+      const fn = pathname === '/api/auth' ? handleAuth : pathname === '/api/chat' ? handleChat : handleData;
+      sendNode(res, await fn(request));
     }
     else await serveStatic(req, res, pathname);
   } catch (err) {

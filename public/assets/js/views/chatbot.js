@@ -19,10 +19,12 @@
  */
 import { $ } from '../core/utils.js';
 import { ensureMarketSymbols } from '../core/symbols.js';
-import { state } from '../core/store.js';
-import { cse } from '../core/api.js';
+import { state, onChange } from '../core/store.js';
+import { cse, news, apiUrl } from '../core/api.js';
 import { go } from '../core/router.js';
-import { computeRow, calcBes } from '../core/finance.js';
+import { computeRow, calcBes, sectorOf, normalizeSymbol } from '../core/finance.js';
+import { toast } from '../core/ui.js';
+import { recordTransaction } from './history.js';
 
 /* =====================================================================
  * CONFIG — change these if needed
@@ -30,9 +32,9 @@ import { computeRow, calcBes } from '../core/finance.js';
 const CONFIG = {
   /** Used only if the app's commission % can't be found. */
   defaultCommissionPct: 1.12,
-  /** Set to 'api/chat' after deploying api/chat.js. Empty = AI off. */
-  aiEndpoint: '',
-  aiTimeoutMs: 15000,
+  /** AI answers (free Gemini / Groq via api/chat). Empty string = AI off. */
+  aiEndpoint: 'api/chat',
+  aiTimeoutMs: 25000,
   historyKey: 'cseChat.v2.history',
   inputHistoryKey: 'cseChat.v2.inputs',
   maxHistory: 60,
@@ -137,9 +139,11 @@ const SINHALA_RE = /[඀-෿]/;
 const SINGLISH_RE = /\b(kohomada|mokakda|mokadda|mokada|monawada|monada|gana|gane|kiyanna|kiyapan|puluwanda|puluwan|mage|mata|oyage|eke|ekata|thiyenne|tiyenne|thiyenawa|thiyanawa|gaththa|gatta|gatte|gaththe|wikuna|wikka|vikka|wikkuwa|mila|keeyada|kiyada|kiiyada|kiyak|keeyak|ada|iye|hondada|hodada|nadda|karanna|balanna|denna|wenne|wenawa|ganna|wikunanna|labaya|padu|parada|walin|yanna|danna|ehema|meka|ewa)\b/i;
 
 const hasSi = (t) => SINHALA_RE.test(t || '');
+const TAMIL_RE = /[\u0B80-\u0BFF]/;
 
 function style(query) {
   const q = query || '';
+  if (TAMIL_RE.test(q)) return 'ta';
   const si = hasSi(q);
   const en = /[a-zA-Z]{3,}/.test(q);
   if (si && en) return 'mix';
@@ -345,7 +349,13 @@ async function resolveByName(query) {
  * Response helpers
  * ===================================================================== */
 /** chips: [{label, q}] → sends q; actions: [{label, tab}] or [{label, url}] */
-const R = (text, opts = {}) => ({ text, chips: opts.chips || [], actions: opts.actions || [] });
+const R = (text, opts = {}) => ({
+  text,
+  chips: opts.chips || [],
+  actions: (opts.actions || []).filter(Boolean),
+  spark: opts.spark || null,
+  ai: !!opts.ai,
+});
 const chip = (label, q) => ({ label, q: q || label });
 const tabAct = (label, tab, sym) => (sym ? { label, tab, sym } : { label, tab });
 
@@ -527,7 +537,8 @@ async function indexReply(st) {
 /* =====================================================================
  * Calculator in chat
  * ===================================================================== */
-const NUM_RE = /(\d[\d,]*(?:\.\d+)?)\s*(k|mn|m|lakhs?|laksha|lakshe)?(?![a-z\d])/gi;
+// Number + optional unit. Singlish suffixes like “120ta” / “120kata” are allowed.
+const NUM_RE = /(\d[\d,]*(?:\.\d+)?)\s*(k|mn|m|lakhs?|laksha|lakshe)?(?!\d)(?!(?!ta\b|kata\b|ta[^a-z]|kata[^a-z])[a-z])/gi;
 
 function extractNumbers(raw) {
   // drop full symbols like COMB.N0000 so their digits aren't read as numbers
@@ -611,7 +622,7 @@ function calcTradeReply(side, raw, sym, st) {
   }
   lines.push('');
   lines.push(pick(st, 'Commission % comes from your app setting.', 'Commission % app setting එකෙන්.', 'Commission % app setting එකෙන් ගන්නේ.'));
-  return R(lines.join('\n'), { actions: [tabAct('Open Calculator', 'calc')] });
+  return R(lines.join('\n'), { actions: [tradeConfirmAction(side, sym, qty, price, st), tabAct('Open Calculator', 'calc')] });
 }
 
 function breakEvenReply(raw, sym, st) {
@@ -924,8 +935,12 @@ async function companyReply(hit, st) {
     'Top shareholders: annual report / CSE page එකේ. ' + DISCLAIMER(st)));
 
   const s = shortSym(d.sym);
+  const spark = await fetchSpark(d.sym, info.id);
   return R(lines.join('\n'), {
+    spark,
     chips: [
+      chip(`${s} news`),
+      chip(`${s} announcements`),
       chip(pick(st, `${s} vs …`, `${s} vs …`, `${s} vs …`), `${s} vs `),
       chip(`buy 100 ${s}`),
       chip(pick(st, 'Dividend yield', 'Dividend yield', 'dividend yield'), `${s} dividend yield`),
@@ -1105,46 +1120,633 @@ function greetingReply(st) {
 
 function starterChips(st) {
   return [
+    chip(pick(st, 'Daily brief', 'අද සාරාංශය', 'daily brief')),
     chip(pick(st, 'My portfolio', 'මගේ portfolio', 'mage portfolio')),
+    chip(pick(st, 'Upcoming XD', 'එන XD dates', 'mage XD dates')),
     chip('Top gainers'),
     chip('COMB'),
-    chip('buy 100 COMB @ 120'),
-    chip(pick(st, 'Is market open?', 'Market open ද?', 'market open da?')),
+    chip(pick(st, 'What can you do?', 'මොනවද කරන්න පුළුවන්?', 'monawada karanna puluwan?')),
   ];
 }
 
 function capabilitiesReply(st) {
   return R(pick(st,
-    'I can:\n• Show any CSE company — type COMB or a name\n• Compare: “COMB vs SAMP”\n• Your portfolio P/L, best & worst\n• Calculate: “buy 100 COMB @ 120”, “break even 120”, “100k with COMB how many”\n• Market: top gainers/losers, ASPI, open/closed\n• Explain terms: XD, P/E, B.E.S, beta…\n• Open tabs: “open news”\nI don’t give buy/sell advice.',
-    'මට පුළුවන්:\n• CSE company එකක් — COMB හෝ නම type කරන්න\n• Compare: “COMB vs SAMP”\n• ඔයාගේ portfolio P/L, හොඳම/දුර්වලම\n• Calculate: “buy 100 COMB @ 120”, “break even 120”\n• Market: gainers/losers, ASPI, open ද\n• වචන තේරුම්: XD, P/E, B.E.S…\n• Tabs open: “news open කරන්න”\nBuy/sell advice දෙන්නේ නැහැ.',
-    'මට කරන්න පුළුවන්:\n• Company info — COMB / නම type කරන්න\n• “COMB vs SAMP” compare\n• mage portfolio P/L, best/worst\n• “COMB 100 120ට ගත්තා” → calculate\n• Gainers/losers, ASPI, market open da\n• XD, P/E, B.E.S තේරුම\n• “news ekata yanna” → tab open\nAdvice නම් නැහැ.'),
+    'I can:\n• Daily brief — “brief”\n• Your portfolio: P/L, best/worst, SELL/NEAR, sectors, performance (“this month”)\n• Dividends: “upcoming XD”, “dividend income”\n• Companies: “COMB”, “COMB vs SAMP”, “COMB news”, “COMB announcements”\n• Calculate: “buy 100 COMB @ 120”, “break even 120”, “100k with COMB how many”\n• What-if: “COMB 10% up”, “COMB 200 more @ 120 avg”, “COMB 10% profit price”\n• Price alerts: “alert COMB 160”\n• Log trades: “log buy 100 COMB @ 120”\n• History: “realized profit”, “my last trades”\n• Market: gainers/losers, ASPI, open/closed\n• Explain terms: XD, P/E, B.E.S…\n• Anything else → free AI (also Tamil)\nNo buy/sell advice.',
+    'මට පුළුවන්:\n• අද සාරාංශය — “brief”\n• Portfolio: P/L, හොඳම/දුර්වලම, SELL/NEAR, sectors, “මේ මාසේ performance”\n• Dividends: “එන XD dates”, “dividend ආදායම”\n• Companies: “COMB”, “COMB vs SAMP”, “COMB news”, “COMB announcements”\n• Calculate: “buy 100 COMB @ 120”, “break even 120”\n• What-if: “COMB 10% වැඩි වුණොත්”, “COMB තව 200ක් 120ට ගත්තොත් avg”\n• Price alerts: “COMB 160 වුණොත් කියන්න”\n• Trades log: “log buy 100 COMB @ 120”\n• History: “realized profit”, “last trades”\n• Market: gainers/losers, ASPI, open ද\n• වචන තේරුම්: XD, P/E, B.E.S…\n• වෙන ඕන දෙයක් → free AI\nBuy/sell advice නැහැ.',
+    'මට කරන්න පුළුවන්:\n• “brief” → අද සාරාංශය\n• mage portfolio, SELL signals, sector breakdown, me maase performance\n• mage XD dates, dividend income keeyada\n• COMB / COMB vs SAMP / COMB news / COMB announcements\n• “COMB 100 120ට ගත්තා” → calculate + portfolio ekata danna\n• “COMB 10% wadi unoth”, “COMB thawa 200 120ta gaththoth avg”\n• “COMB 160 unoth kiyanna” → alert\n• realized profit, mage last trades\n• gainers/losers, ASPI, market open da\n• XD, P/E, B.E.S තේරුම\n• වෙන ඕන දෙයක් → free AI\nAdvice නම් නැහැ.'),
   { chips: starterChips(st) });
+}
+
+/* =====================================================================
+ * EXTRA FEATURES — dividends, daily brief, what-if, price alerts,
+ * realized P/L, performance, sectors, company news & announcements,
+ * mini price chart, logging trades from chat.
+ * ===================================================================== */
+const DAY_MS = 86400000;
+const startOfToday = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+
+/** Accepts ISO strings, "05 Nov 2026", epoch seconds/ms. */
+function toDate(v) {
+  if (v == null || v === '') return null;
+  if (v instanceof Date) return Number.isNaN(v.getTime()) ? null : v;
+  const s = String(v).trim();
+  let d;
+  if (/^\d{10}$/.test(s)) d = new Date(Number(s) * 1000);
+  else if (/^\d{13}$/.test(s)) d = new Date(Number(s));
+  else d = new Date(s.replace(/^(\d{4}-\d{2}-\d{2}) (\d)/, '$1T$2'));
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+const showDate = (v) => {
+  const d = toDate(v);
+  return d ? d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : String(v || '');
+};
+
+/** Holdings keyed by base symbol (lots of the same share are summed). */
+function heldMap() {
+  const m = new Map();
+  for (const h of A.holdings()) {
+    const b = baseOf(h.symbol);
+    const cur = m.get(b);
+    if (cur) { cur.qty += h.qty; cur.totalCost = (cur.totalCost || 0) + (h.totalCost || 0); cur.avgDps = cur.avgDps || h.avgDps; }
+    else m.set(b, { ...h });
+  }
+  return m;
+}
+
+/* ---------- Dividends / XD ---------- */
+async function cashDividendRows() {
+  try {
+    const d = await cseCached('cashDividends', {});
+    const list = Array.isArray(d?.cashDividends) ? d.cashDividends : [];
+    return list.map((r) => ({
+      symbol: baseOf(r.symbol),
+      company: r.company || '',
+      dps: num(r.votingDivPerShare),
+      xd: toDate(r.xd),
+      pay: toDate(r.payment),
+    })).filter((r) => r.symbol || r.company);
+  } catch {
+    return null;
+  }
+}
+
+async function dividendsReply(st, mode) {
+  const held = heldMap();
+  const today = startOfToday();
+  const rows = await cashDividendRows();
+  const lines = [];
+  const you = pick(st, 'you get', 'ඔයාට', 'ඔයාට');
+
+  // Estimated yearly income from the Avg DPS you set in the Dividends tab
+  const est = [...held.values()].reduce((s, h) => s + (Number(h.avgDps) || 0) * h.qty, 0);
+  const cost = [...held.values()].reduce((s, h) => s + (h.totalCost || 0), 0);
+  const estLine = est > 0
+    ? pick(st,
+      `Estimated yearly dividends (from your Avg DPS): **${fmtRs(est)}**${cost ? ` · ${fmtNum((est / cost) * 100)}% on cost` : ''}`,
+      `ඔයාගේ Avg DPS අනුව අවුරුද්දකට dividends: **${fmtRs(est)}**${cost ? ` · cost එකෙන් ${fmtNum((est / cost) * 100)}%` : ''}`,
+      `Avg DPS අනුව අවුරුද්දට dividends: **${fmtRs(est)}**${cost ? ` · cost එකෙන් ${fmtNum((est / cost) * 100)}%` : ''}`)
+    : null;
+  if (mode === 'income') {
+    lines.push(estLine || pick(st,
+      'Set “Avg DPS” for your holdings in the Dividends tab to see yearly income.',
+      'අවුරුදු ආදායම බලන්න Dividends tab එකේ holdings වලට “Avg DPS” දාන්න.',
+      'Yearly income බලන්න Dividends tab එකේ Avg DPS දාන්න.'));
+    const y = String(new Date().getFullYear());
+    const paid = (state.divEvents || []).filter((e) => e.status === 'Paid' && String(e.pay || e.xd).includes(y));
+    if (paid.length) {
+      const sum = paid.reduce((s, e) => s + (Number(e.dps) || 0) * (held.get(baseOf(e.symbol))?.qty || 0), 0);
+      lines.push(pick(st, `Logged as paid this year: ~${fmtRs(sum)} (${paid.length} events)`, `මේ අවුරුද්දේ ලැබුණා කියලා log කරපු: ~${fmtRs(sum)} (${paid.length})`, `මේ අවුරුද්දේ paid log: ~${fmtRs(sum)}`));
+    }
+    lines.push('');
+  }
+
+  if (rows) {
+    const upcoming = rows.filter((r) => r.xd && r.xd >= today).sort((a, b) => a.xd - b.xd);
+    const mine = upcoming.filter((r) => held.has(r.symbol));
+    lines.push(pick(st, '— Upcoming dividends on your shares —', '— ඔයාගේ shares වලට එන dividends —', '— ඔයාගේ shares වලට එන dividends —'));
+    if (mine.length) {
+      for (const r of mine.slice(0, 8)) {
+        const h = held.get(r.symbol);
+        const inc = r.dps && h ? r.dps * h.qty : null;
+        lines.push(`**${r.symbol}** Rs ${fmtNum(r.dps)}/share · XD ${showDate(r.xd)}${r.pay ? ` · pay ${showDate(r.pay)}` : ''}${inc != null ? ` → ${you} ~${fmtRs(inc)}` : ''}`);
+      }
+      lines.push(pick(st, 'Own the share BEFORE the XD date to get it.', 'Dividend එක ගන්න XD දිනයට කලින් share එක තියෙන්න ඕන.', 'XD date එකට කලින් share එක තියෙන්න ඕන.'));
+    } else {
+      lines.push(held.size
+        ? pick(st, 'None announced yet for your holdings.', 'ඔයාගේ holdings වලට තවම announce කරලා නැහැ.', 'ඔයාගේ shares වලට තවම නැහැ.')
+        : pick(st, 'You have no holdings yet.', 'තවම holdings නැහැ.', 'තවම holdings නැහැ.'));
+    }
+    if (mode !== 'income') {
+      const others = upcoming.filter((r) => !held.has(r.symbol)).slice(0, 5);
+      if (others.length) {
+        lines.push('', pick(st, '— Other upcoming XD —', '— වෙනත් ළඟ එන XD —', '— Other upcoming XD —'));
+        for (const r of others) lines.push(`${r.symbol || r.company} Rs ${fmtNum(r.dps)} · XD ${showDate(r.xd)}`);
+      }
+    }
+  } else {
+    const ev = (state.divEvents || []).filter((e) => toDate(e.xd) >= today);
+    lines.push(pick(st, 'Couldn’t load the CSE dividend list right now.', 'CSE dividend list එක දැන් load කරන්න බැරි වුණා.', 'CSE dividend list එක load වුණේ නැහැ.'));
+    if (ev.length) {
+      lines.push(pick(st, 'From your event log:', 'ඔයාගේ event log එකෙන්:', 'Event log එකෙන්:'));
+      for (const e of ev.slice(0, 6)) lines.push(`**${baseOf(e.symbol)}** Rs ${fmtNum(e.dps)} · XD ${showDate(e.xd)}`);
+    }
+  }
+  if (mode !== 'income' && estLine) lines.push('', estLine);
+  lines.push(pick(st, 'Confirm on cse.lk. Amounts are before tax.', 'cse.lk එකෙන් confirm කරන්න. Tax කපන්න කලින් අගයන්.', 'cse.lk එකෙන් confirm කරන්න. Tax කලින්.'));
+  return R(lines.join('\n'), {
+    chips: [chip(pick(st, 'Dividend income', 'Dividend ආදායම', 'dividend income keeyada')), chip(pick(st, 'Upcoming XD', 'එන XD dates', 'mage XD dates'))],
+    actions: [tabAct('Open Dividends', 'div'), { label: 'CSE dividends', url: 'https://www.cse.lk/announcements/?category=CASH+DIVIDEND' }],
+  });
+}
+
+/* ---------- Company news & CSE announcements ---------- */
+async function announcementRows(test, days = 30) {
+  const out = [];
+  const [fin, appr] = await Promise.allSettled([cseCached('getFinancialAnnouncement', {}), cseCached('approvedAnnouncement', {})]);
+  if (fin.status === 'fulfilled') {
+    for (const a of fin.value?.reqFinancialAnnouncemnets || []) {
+      const b = baseOf(a.symbol);
+      if (!test(b)) continue;
+      out.push({
+        sym: b,
+        title: a.fileText || 'Financial disclosure',
+        date: toDate(a.uploadedDate || a.manualDate),
+        link: a.path ? 'https://cdn.cse.lk/' + String(a.path).replace(/^\/+/, '') : 'https://www.cse.lk/',
+      });
+    }
+  }
+  if (appr.status === 'fulfilled') {
+    for (const a of appr.value?.approvedAnnouncements || []) {
+      const b = baseOf(a.symbol);
+      if (!test(b)) continue;
+      out.push({
+        sym: b,
+        title: [a.type, a.announcementCategory].filter(Boolean).join(' · ') || 'Announcement',
+        date: toDate(a.dateOfAnnouncement || a.createdDate),
+        link: 'https://www.cse.lk/pages/announcements/announcements.component.html',
+      });
+    }
+  }
+  const since = Date.now() - days * DAY_MS;
+  return out.filter((x) => !x.date || x.date.getTime() >= since).sort((a, b) => (b.date || 0) - (a.date || 0));
+}
+
+const linkLine = (title, url, extra) => `• [${String(title).replace(/[[\]]/g, '').slice(0, 110)}](${url})${extra ? ` — ${extra}` : ''}`;
+
+async function announcementsReply(st, sym) {
+  const held = heldMap();
+  const test = sym ? (b) => b === baseOf(sym) : (b) => held.has(b);
+  if (!sym && !held.size) return R(pick(st, 'Add holdings first, or ask for a company, e.g. “COMB announcements”.', 'මුලින් holdings දාන්න, නැත්නම් “COMB announcements” වගේ අහන්න.', 'Holdings නැහැ — “COMB announcements” වගේ අහන්න.'));
+  const rows = await announcementRows(test, 45);
+  const title = sym
+    ? pick(st, `— ${shortSym(sym)}: CSE announcements (45 days) —`, `— ${shortSym(sym)}: CSE නිවේදන (දින 45) —`, `— ${shortSym(sym)} announcements (45 days) —`)
+    : pick(st, '— Announcements for your shares (45 days) —', '— ඔයාගේ shares වල නිවේදන (දින 45) —', '— ඔයාගේ shares announcements —');
+  const lines = [title];
+  if (!rows.length) lines.push(pick(st, 'Nothing found in the CSE feed.', 'CSE feed එකේ මොකුත් නැහැ.', 'මොකුත් නැහැ.'));
+  for (const r of rows.slice(0, 7)) lines.push(linkLine(`${sym ? '' : r.sym + ': '}${r.title}`, r.link, r.date ? showDate(r.date) : ''));
+  return R(lines.join('\n'), { chips: sym ? [chip(`${shortSym(sym)} news`)] : [], actions: [tabAct('Open News', 'news')] });
+}
+
+async function companyNewsReply(sym, st) {
+  const row = A.row(sym);
+  const name = String(A.name(row) || '').replace(/\bPLC\b|\bLIMITED\b|\bLTD\b/gi, '').trim();
+  let items = [];
+  try {
+    const d = await news('company', { symbol: sym, name, limit: 6 });
+    items = Array.isArray(d?.items) ? d.items : [];
+  } catch { /* offline */ }
+  const lines = [pick(st, `— ${shortSym(sym)} in the news —`, `— ${shortSym(sym)} පුවත් —`, `— ${shortSym(sym)} news —`)];
+  if (!items.length) lines.push(pick(st, 'No recent news found.', 'අලුත් පුවත් හම්බුණේ නැහැ.', 'Recent news නැහැ.'));
+  for (const it of items.slice(0, 5)) {
+    if (!/^https?:\/\//.test(it.link || '')) continue;
+    lines.push(linkLine(it.title || 'News', it.link, [it.source, it.pubDate ? showDate(it.pubDate) : ''].filter(Boolean).join(' · ')));
+  }
+  lines.push(pick(st, 'Verify important news from official sources.', 'වැදගත් පුවත් official source එකෙන් confirm කරන්න.', 'Official source එකෙන් confirm කරන්න.'));
+  return R(lines.join('\n'), { chips: [chip(`${shortSym(sym)} announcements`), chip(shortSym(sym))], actions: [tabAct('Open News', 'news')] });
+}
+
+/* ---------- Mini price chart (sparkline) ---------- */
+async function fetchSpark(sym, infoId) {
+  const id = A.pm(sym)?.id ?? A.row(sym)?.id ?? infoId;
+  if (id == null) return null;
+  try {
+    const ch = await cseCached('companyChartDataByStock', { stockId: id, period: '5' });
+    const raw = ch?.chartData || ch?.reqTradeSummery?.chartData || [];
+    const pts = (Array.isArray(raw) ? raw : []).map((p) => Number(p.p ?? p.c)).filter((n) => Number.isFinite(n) && n > 0).slice(-90);
+    return pts.length >= 5 ? pts : null;
+  } catch {
+    return null;
+  }
+}
+
+/* ---------- Daily brief ---------- */
+async function briefReply(st) {
+  const hour = Number(colomboClock().hhmm.slice(0, 2));
+  const hello = hour < 12
+    ? pick(st, 'Good morning! ☀️', 'සුබ උදෑසනක්! ☀️', 'Good morning! ☀️')
+    : hour < 17 ? pick(st, 'Good afternoon!', 'සුබ දවාලක්!', 'Good afternoon!') : pick(st, 'Good evening!', 'සුබ සන්ධ්‍යාවක්!', 'Good evening!');
+  const held = heldMap();
+  const today = startOfToday();
+  const [statusR, aspiR, divR, annR] = await Promise.allSettled([
+    cseCached('marketStatus', {}),
+    cseCached('aspiData', {}),
+    held.size ? cashDividendRows() : Promise.resolve(null),
+    held.size ? announcementRows((b) => held.has(b), 3) : Promise.resolve([]),
+  ]);
+  const lines = [`**${hello}** ${pick(st, 'Here’s your brief:', 'අද සාරාංශය:', 'අද brief එක:')}`];
+
+  const ms = marketStatus();
+  const official = statusR.status === 'fulfilled' ? String(statusR.value?.status || '') : '';
+  const open = official ? /open/i.test(official) : ms.open;
+  let mk = open ? pick(st, '🟢 Market open', '🟢 Market open', '🟢 Market open') : pick(st, '🔴 Market closed', '🔴 Market වහලා', '🔴 Market closed');
+  const a = aspiR.status === 'fulfilled' ? aspiR.value : null;
+  const av = num(a?.value);
+  if (av != null) mk += ` · ASPI ${fmtNum(av)} ${arrow(num(a?.percentage))} ${fmtPct(num(a?.percentage))}`;
+  lines.push(mk);
+
+  if (held.size) {
+    const s = portfolioStats();
+    if (s.priced.length) {
+      lines.push(pick(st,
+        `📁 Portfolio ${fmtRs(s.totalValue)} · P/L ${fmtRs(s.pl)} (${fmtPct(s.totalCost ? (s.pl / s.totalCost) * 100 : 0)})${s.dayPl ? ` · today ${fmtRs(s.dayPl)}` : ''}`,
+        `📁 Portfolio ${fmtRs(s.totalValue)} · P/L ${fmtRs(s.pl)} (${fmtPct(s.totalCost ? (s.pl / s.totalCost) * 100 : 0)})${s.dayPl ? ` · අද ${fmtRs(s.dayPl)}` : ''}`,
+        `📁 Portfolio ${fmtRs(s.totalValue)} · P/L ${fmtRs(s.pl)}${s.dayPl ? ` · අද ${fmtRs(s.dayPl)}` : ''}`));
+      const movers = [...s.priced].filter((r) => r.chg != null).sort((x, y) => Math.abs(y.chg) - Math.abs(x.chg)).slice(0, 3);
+      if (movers.length) lines.push(`↕ ${movers.map((r) => `${shortSym(r.symbol)} ${fmtPct(r.chg)}`).join(' · ')}`);
+      const sells = s.priced.filter((r) => r.status === 'sell').map((r) => shortSym(r.symbol));
+      const nears = s.priced.filter((r) => r.status === 'near').map((r) => shortSym(r.symbol));
+      if (sells.length || nears.length) lines.push(`🔔 SELL: ${sells.join(', ') || '—'} · NEAR: ${nears.join(', ') || '—'}`);
+    }
+    const div = divR.status === 'fulfilled' ? divR.value : null;
+    const soon = (div || []).filter((r) => held.has(r.symbol) && r.xd && r.xd >= today && r.xd - today <= 14 * DAY_MS);
+    if (soon.length) lines.push(`💰 ${pick(st, 'XD soon', 'ළඟදී XD', 'XD soon')}: ${soon.map((r) => `${r.symbol} ${showDate(r.xd)} (Rs ${fmtNum(r.dps)})`).join(' · ')}`);
+    const ann = annR.status === 'fulfilled' ? annR.value : [];
+    if (ann.length) {
+      lines.push(`📣 ${pick(st, 'New announcements', 'අලුත් නිවේදන', 'New announcements')}:`);
+      for (const r of ann.slice(0, 3)) lines.push(linkLine(`${r.sym}: ${r.title}`, r.link));
+    }
+  } else {
+    lines.push(pick(st, 'Add your shares in the Portfolio tab to get a personal brief.', 'Personal brief එකක් ගන්න Portfolio tab එකේ shares දාන්න.', 'Portfolio එකට shares දැම්මොත් personal brief එකක් එනවා.'));
+  }
+  const alerts = loadAlerts();
+  if (alerts.length) lines.push(`⏰ ${pick(st, 'Active price alerts', 'Active price alerts', 'Active alerts')}: ${alerts.map((x) => `${shortSym(x.sym)} ${x.dir === 'above' ? '≥' : '≤'} ${fmtNum(x.price)}`).join(' · ')}`);
+  lines.push(DISCLAIMER(st));
+  return R(lines.join('\n'), { chips: starterChips(st) });
+}
+
+/* ---------- What-if / average down / target ---------- */
+const UP_WORDS = /\b(up|rise|rises|gain|increase|wadi|wedi|nagi|nagga|naginawa)\w*|වැඩි|නැග/i;
+const DOWN_WORDS = /\b(down|fall|falls|drop|drops|decline|bass|baswunoth|basoth|adu|aduwunoth|watuna|watunoth)\w*|අඩු|බැස/i;
+const IF_WORDS = /\b(if|what if|unoth|wunoth|unot|unath|giyoth|gyoth|goes|went|reach(es)?|reached|hit(s)?|nam)\b|\b[a-z]+oth\b|ොත්/i;
+
+function whatIfReply(raw, q, sym, st) {
+  const held = sym ? heldMap().get(baseOf(sym)) : null;
+  const rate = A.commissionPct();
+  const c = rate / 100;
+  const pctM = raw.match(/(\d+(?:\.\d+)?)\s*%/);
+
+  // 1) Average down / add more: "COMB thawa 200 120ta gaththoth avg keeyada"
+  if (held && /\b(thawa|tawa|more|again|another|add|average|avg|aduwata|ekathu)\b|තව/i.test(q) && !pctM) {
+    const { qty, price } = parseTrade(raw.replace(/\b(avg|average)\b/gi, ' '), null);
+    if (qty && price) {
+      const net = qty * price * (1 + c);
+      const newBal = held.qty + qty;
+      const newCost = (held.totalCost || held.qty * held.avg) + net;
+      const newAvg = newCost / newBal;
+      const newBes = calcBes(newAvg, rate);
+      const oldBes = held.besPrice || calcBes(held.avg, rate);
+      return R([
+        pick(st, `— If you buy ${fmtNum(qty, 0)} more ${shortSym(sym)} @ Rs ${fmtNum(price)} —`, `— තව ${shortSym(sym)} ${fmtNum(qty, 0)}ක් Rs ${fmtNum(price)} ට ගත්තොත් —`, `— තව ${fmtNum(qty, 0)} ${shortSym(sym)} @ Rs ${fmtNum(price)} —`),
+        pick(st, `Extra cost (incl. ${fmtNum(rate)}%): ${fmtRs(net)}`, `අමතර cost (commission එක්ක): ${fmtRs(net)}`, `Extra cost: ${fmtRs(net)}`),
+        pick(st, `Shares: ${fmtNum(held.qty, 0)} → **${fmtNum(newBal, 0)}**`, `කොටස්: ${fmtNum(held.qty, 0)} → **${fmtNum(newBal, 0)}**`, `Shares: ${fmtNum(held.qty, 0)} → **${fmtNum(newBal, 0)}**`),
+        `Avg: Rs ${fmtNum(held.avg)} → **Rs ${fmtNum(newAvg)}**`,
+        `B.E.S: Rs ${fmtNum(oldBes)} → **Rs ${fmtNum(newBes)}**`,
+        pick(st, `Total cost: ${fmtRs(newCost)}`, `මුළු cost: ${fmtRs(newCost)}`, `Total cost: ${fmtRs(newCost)}`),
+        DISCLAIMER(st),
+      ].join('\n'), { chips: [chip(`buy ${qty} ${shortSym(sym)} @ ${price}`)] });
+    }
+  }
+
+  // 2) Target profit: "COMB 10% profit ganna keeyata wikunanna ona"
+  const tgtM = q.match(/(\d+(?:\.\d+)?)\s*%\s*(profit|labaya|ලාභ|gain)/) || q.match(/(profit|labaya|ලාභ)\D{0,12}(\d+(?:\.\d+)?)\s*%/);
+  if (held && tgtM) {
+    const p = Number(tgtM[1] && /\d/.test(tgtM[1]) ? tgtM[1] : tgtM[2]) / 100;
+    const cost = held.totalCost || held.qty * held.avg;
+    const target = (cost * (1 + p)) / (held.qty * (1 - c));
+    const now = A.price(sym);
+    return R([
+      pick(st, `To make ${fmtNum(p * 100)}% on ${shortSym(sym)} after commission, sell at about **Rs ${fmtNum(target)}**.`,
+        `${shortSym(sym)} එකෙන් commission කපලා ${fmtNum(p * 100)}% ලාභයක් ගන්න **Rs ${fmtNum(target)}** පමණ ට විකුණන්න ඕන.`,
+        `${shortSym(sym)} ${fmtNum(p * 100)}% profit (commission කපලා) → **Rs ${fmtNum(target)}** ට sell කරන්න ඕන.`),
+      now ? pick(st, `Now Rs ${fmtNum(now)} — needs ${fmtPct(((target / now) - 1) * 100)}.`, `දැන් Rs ${fmtNum(now)} — තව ${fmtPct(((target / now) - 1) * 100)} යන්න ඕන.`, `දැන් Rs ${fmtNum(now)} → ${fmtPct(((target / now) - 1) * 100)} ඕන.`) : '',
+      pick(st, `Profit would be ~${fmtRs(cost * p)}.`, `ලාභය ~${fmtRs(cost * p)}.`, `Profit ~${fmtRs(cost * p)}.`),
+      DISCLAIMER(st),
+    ].filter(Boolean).join('\n'), { chips: [chip(`alert ${shortSym(sym)} ${Math.ceil(target * 100) / 100}`)] });
+  }
+
+  if (!IF_WORDS.test(raw)) return null;
+
+  // 3) Whole portfolio: "market eka 10% bassoth mage portfolio"
+  if (!sym && pctM && /portfolio|mage|my|market|මගේ/i.test(q)) {
+    const p = (DOWN_WORDS.test(raw) ? -1 : 1) * Number(pctM[1]) / 100;
+    const s = portfolioStats();
+    if (!s.priced.length) return portfolioReply(st);
+    let mv = 0, pl = 0;
+    for (const r of s.priced) {
+      const rr = computeRow({ ...r, tradedPrice: r.price * (1 + p) }, rate);
+      mv += rr.marketValue;
+      pl += rr.gainLoss;
+    }
+    return R([
+      pick(st, `— If all your shares move ${fmtPct(p * 100)} —`, `— ඔයාගේ shares ඔක්කොම ${fmtPct(p * 100)} වෙනස් වුණොත් —`, `— ඔක්කොම ${fmtPct(p * 100)} ගියොත් —`),
+      pick(st, `Value: ${fmtRs(s.totalValue)} → **${fmtRs(mv)}** (${fmtRs(mv - s.totalValue)})`, `වටිනාකම: ${fmtRs(s.totalValue)} → **${fmtRs(mv)}** (${fmtRs(mv - s.totalValue)})`, `Value: ${fmtRs(s.totalValue)} → **${fmtRs(mv)}**`),
+      `P/L: ${fmtRs(s.pl)} → **${fmtRs(pl)}**`,
+      DISCLAIMER(st),
+    ].join('\n'));
+  }
+
+  // 4) One share at a price or % move
+  if (!sym) return null;
+  const now = A.price(sym);
+  let target = null;
+  if (pctM && now) target = now * (1 + ((DOWN_WORDS.test(raw) ? -1 : 1) * Number(pctM[1])) / 100);
+  else {
+    const n = extractNumbers(raw).map((x) => x.v).find((v) => v > 0);
+    if (n) target = n;
+  }
+  if (!target) return null;
+  const lines = [pick(st, `— If ${shortSym(sym)} goes to Rs ${fmtNum(target)} —`, `— ${shortSym(sym)} Rs ${fmtNum(target)} වුණොත් —`, `— ${shortSym(sym)} Rs ${fmtNum(target)} unoth —`)];
+  if (now) lines.push(pick(st, `That’s ${fmtPct(((target / now) - 1) * 100)} from now (Rs ${fmtNum(now)}).`, `දැන් මිලේ (Rs ${fmtNum(now)}) සිට ${fmtPct(((target / now) - 1) * 100)}.`, `දැන් Rs ${fmtNum(now)} → ${fmtPct(((target / now) - 1) * 100)}.`));
+  if (held) {
+    const r = computeRow({ ...held, tradedPrice: target }, rate);
+    const sig = r.status === 'sell' ? 'SELL' : r.status === 'near' ? 'NEAR' : 'WAIT';
+    lines.push(pick(st,
+      `Your ${fmtNum(held.qty, 0)} shares: value ${fmtRs(r.marketValue)} · **P/L ${fmtRs(r.gainLoss)} (${fmtPct(r.gainLossPct)})** · signal ${sig}`,
+      `ඔයාගේ කොටස් ${fmtNum(held.qty, 0)}: වටිනාකම ${fmtRs(r.marketValue)} · **P/L ${fmtRs(r.gainLoss)} (${fmtPct(r.gainLossPct)})** · signal ${sig}`,
+      `ඔයාගේ ${fmtNum(held.qty, 0)}: value ${fmtRs(r.marketValue)} · **P/L ${fmtRs(r.gainLoss)} (${fmtPct(r.gainLossPct)})** · ${sig}`));
+  } else {
+    lines.push(pick(st, 'You don’t hold this share.', 'ඔයා ළඟ මේ share එක නැහැ.', 'මේ share එක ඔයා ළඟ නැහැ.'));
+  }
+  lines.push(DISCLAIMER(st));
+  return R(lines.join('\n'), { chips: [chip(`alert ${shortSym(sym)} ${fmtNum(target).replace(/,/g, '')}`)] });
+}
+
+/* ---------- Price alerts (saved in this browser) ---------- */
+const ALERT_KEY = 'cseChat.alerts.v1';
+function loadAlerts() {
+  try { const v = JSON.parse(localStorage.getItem(ALERT_KEY) || '[]'); return Array.isArray(v) ? v : []; } catch { return []; }
+}
+function saveAlerts(list) {
+  try { localStorage.setItem(ALERT_KEY, JSON.stringify(list.slice(0, 30))); } catch { /* blocked */ }
+}
+
+/** Returns the alerts that fired (and removes them). */
+function checkAlerts() {
+  const list = loadAlerts();
+  if (!list.length) return [];
+  const fired = [];
+  const keep = [];
+  for (const a of list) {
+    const p = A.price(a.sym);
+    if (p != null && ((a.dir === 'above' && p >= a.price) || (a.dir === 'below' && p <= a.price))) fired.push({ ...a, now: p });
+    else keep.push(a);
+  }
+  if (fired.length) saveAlerts(keep);
+  return fired;
+}
+
+function alertReply(raw, q, sym, st) {
+  const list = loadAlerts();
+  if (/(clear|remove|delete|cancel|ain|ayin|අයින්)/i.test(q)) {
+    const keep = sym ? list.filter((a) => baseOf(a.sym) !== baseOf(sym)) : [];
+    saveAlerts(keep);
+    return R(pick(st, `Removed ${list.length - keep.length} alert(s).`, `Alerts ${list.length - keep.length}ක් අයින් කළා.`, `Alerts ${list.length - keep.length}ක් remove කළා.`));
+  }
+  const nums = extractNumbers(raw).map((x) => x.v);
+  if (!sym || !nums.length) {
+    if (!list.length) {
+      return R(pick(st,
+        'No price alerts yet. Example: “alert COMB 160” or “COMB 140ට බැස්සොත් කියන්න”. I’ll notify you when prices refresh.',
+        'තවම price alerts නැහැ. උදා: “alert COMB 160”. Prices refresh වෙද්දී මම දන්වනවා.',
+        'Alerts නැහැ. උදා: “COMB 160 unoth kiyanna”. Prices refresh වෙද්දී කියනවා.'), { chips: [chip('alert COMB 160')] });
+    }
+    return R([pick(st, '— Your price alerts —', '— ඔයාගේ price alerts —', '— ඔයාගේ alerts —'),
+      ...list.map((a) => `**${shortSym(a.sym)}** ${a.dir === 'above' ? '≥' : '≤'} Rs ${fmtNum(a.price)} (${pick(st, 'now', 'දැන්', 'දැන්')} Rs ${fmtNum(A.price(a.sym))})`),
+    ].join('\n'), { chips: [chip(pick(st, 'Clear alerts', 'alerts අයින් කරන්න', 'alerts clear'))] });
+  }
+  const now = A.price(sym);
+  const pctM = raw.match(/(\d+(?:\.\d+)?)\s*%/);
+  let price = nums[0];
+  if (pctM && now) price = now * (1 + ((DOWN_WORDS.test(raw) ? -1 : 1) * Number(pctM[1])) / 100);
+  let dir = DOWN_WORDS.test(raw) || /\b(below|under)\b/i.test(raw) ? 'below' : UP_WORDS.test(raw) || /\b(above|over)\b/i.test(raw) ? 'above' : null;
+  if (!dir) dir = now != null && price < now ? 'below' : 'above';
+  price = Math.round(price * 100) / 100;
+  const full = A.row(sym) ? A.sym(A.row(sym)) : sym;
+  saveAlerts([...list.filter((a) => !(baseOf(a.sym) === baseOf(full) && a.dir === dir)), { sym: full, price, dir, created: Date.now() }]);
+  return R(pick(st,
+    `⏰ Alert set: **${shortSym(full)} ${dir === 'above' ? '≥' : '≤'} Rs ${fmtNum(price)}**${now ? ` (now Rs ${fmtNum(now)})` : ''}. I’ll tell you when prices refresh — keep the app open (auto-refresh in Settings).`,
+    `⏰ Alert එක දැම්මා: **${shortSym(full)} ${dir === 'above' ? '≥' : '≤'} Rs ${fmtNum(price)}**${now ? ` (දැන් Rs ${fmtNum(now)})` : ''}. Prices refresh වෙද්දී කියනවා — app එක open කරලා තියන්න.`,
+    `⏰ Alert set: **${shortSym(full)} ${dir === 'above' ? '≥' : '≤'} Rs ${fmtNum(price)}**${now ? ` (දැන් Rs ${fmtNum(now)})` : ''}. Prices refresh වෙද්දී කියනවා.`),
+  { chips: [chip(pick(st, 'My alerts', 'මගේ alerts', 'mage alerts'))] });
+}
+
+/* ---------- Realized P/L & trades ---------- */
+function realizedReply(st) {
+  const tx = state.transactions || [];
+  const sells = tx.filter((t) => t.type === 'sell');
+  if (!tx.length) {
+    return R(pick(st, 'No trades logged yet. Log buys/sells in History (or tell me: “log buy 100 COMB @ 120”).', 'තවම trades log කරලා නැහැ. History එකේ log කරන්න (නැත්නම් “log buy 100 COMB @ 120”).', 'Trades log කරලා නැහැ — History එකේ, නැත්නම් “log buy 100 COMB @ 120”.'), { actions: [tabAct('Open History', 'history')] });
+  }
+  const y = String(new Date().getFullYear());
+  const sum = (arr) => arr.reduce((s, t) => s + (Number(t.realized) || 0), 0);
+  const ytd = sells.filter((t) => String(t.date).startsWith(y));
+  const m = new Date().toISOString().slice(0, 7);
+  const mtd = sells.filter((t) => String(t.date).startsWith(m));
+  const best = [...sells].sort((a, b) => b.realized - a.realized)[0];
+  const lines = [
+    pick(st, '— Realized profit (sold shares) —', '— විකුණලා ලැබුණු ලාභය —', '— Realized P/L (sold) —'),
+    `${pick(st, 'This month', 'මේ මාසේ', 'මේ මාසේ')}: **${fmtRs(sum(mtd))}** (${mtd.length})`,
+    `${pick(st, 'This year', 'මේ අවුරුද්දේ', 'මේ අවුරුද්දේ')}: **${fmtRs(sum(ytd))}** (${ytd.length})`,
+    `${pick(st, 'All time', 'මුළු', 'All time')}: **${fmtRs(sum(sells))}** (${sells.length})`,
+  ];
+  if (best && best.realized > 0) lines.push(pick(st, `Best sale: ${shortSym(best.symbol)} ${fmtRs(best.realized)} (${best.date})`, `හොඳම විකුණුම: ${shortSym(best.symbol)} ${fmtRs(best.realized)} (${best.date})`, `Best sale: ${shortSym(best.symbol)} ${fmtRs(best.realized)}`));
+  lines.push(pick(st, 'Open positions (not sold) are in your portfolio P/L.', 'නොවිකුණපු shares වල P/L portfolio එකේ.', 'Open positions → portfolio P/L.'));
+  return R(lines.join('\n'), { chips: [chip(pick(st, 'My last trades', 'මගේ අන්තිම trades', 'mage last trades'))], actions: [tabAct('Open History', 'history')] });
+}
+
+function tradesReply(st) {
+  const tx = [...(state.transactions || [])].sort((a, b) => (b.ts || 0) - (a.ts || 0)).slice(0, 8);
+  if (!tx.length) return realizedReply(st);
+  const lines = [pick(st, '— Your last trades —', '— ඔයාගේ අන්තිම trades —', '— Last trades —')];
+  for (const t of tx) {
+    lines.push(`${t.date} ${t.type === 'buy' ? '🟦 BUY' : '🟥 SELL'} **${shortSym(t.symbol)}** ${fmtNum(t.qty, 0)} @ ${fmtNum(t.price)}${t.type === 'sell' ? ` → ${fmtRs(t.realized)}` : ''}`);
+  }
+  return R(lines.join('\n'), { chips: [chip(pick(st, 'Realized profit', 'Realized ලාභය', 'realized profit'))], actions: [tabAct('Open History', 'history')] });
+}
+
+/* ---------- Performance over time ---------- */
+function performanceReply(raw, st) {
+  const q = raw.toLowerCase();
+  let days = 30, label = pick(st, 'last 30 days', 'පහුගිය දින 30', 'last 30 days');
+  if (/week|sathi|සති/.test(q)) { days = 7; label = pick(st, 'last 7 days', 'පහුගිය දින 7', 'last 7 days'); }
+  else if (/3\s*month|quarter|maasa 3|මාස 3/.test(q)) { days = 90; label = pick(st, 'last 3 months', 'පහුගිය මාස 3', 'last 3 months'); }
+  else if (/year|awurud|අවුරුද්/.test(q)) { days = 365; label = pick(st, 'last 12 months', 'පහුගිය මාස 12', 'last 12 months'); }
+  const snaps = (state.valueSnaps || []).filter((s) => s.day && s.mv > 0).sort((a, b) => a.day.localeCompare(b.day));
+  if (snaps.length < 2) {
+    return R(pick(st,
+      'Not enough history yet — the app saves one value snapshot per day when prices refresh. Check back in a few days.',
+      'තවම history මදි — prices refresh වෙද්දී app එක දවසකට එක snapshot එකක් save කරනවා. දවස් කීපයකින් ආයෙ බලන්න.',
+      'History මදි — දවසකට එක snapshot එකක් save වෙනවා. දවස් කීපයකින් බලන්න.'));
+  }
+  const last = snaps[snaps.length - 1];
+  const cutoff = new Date(new Date(last.day).getTime() - days * DAY_MS).toISOString().slice(0, 10);
+  const base = [...snaps].reverse().find((s) => s.day <= cutoff) || snaps[0];
+  const used = snaps.filter((s) => s.day >= base.day);
+  const plNow = last.mv - last.cost;
+  const plThen = base.mv - base.cost;
+  const gain = plNow - plThen;
+  const added = last.cost - base.cost;
+  const lines = [
+    pick(st, `— Portfolio, ${label} —`, `— Portfolio, ${label} —`, `— Portfolio, ${label} —`),
+    `${base.day} → ${last.day}`,
+    pick(st, `Value: ${fmtRs(base.mv)} → **${fmtRs(last.mv)}**`, `වටිනාකම: ${fmtRs(base.mv)} → **${fmtRs(last.mv)}**`, `Value: ${fmtRs(base.mv)} → **${fmtRs(last.mv)}**`),
+    `${gain >= 0 ? '✅' : '🔻'} ${pick(st, 'Market gain/loss', 'Market එකෙන් ලාභ/පාඩු', 'Market gain/loss')}: **${fmtRs(gain)}**${base.cost ? ` (${fmtPct((gain / base.cost) * 100)})` : ''}`,
+  ];
+  if (Math.abs(added) > 1) lines.push(pick(st, `Money added/removed: ${fmtRs(added)} (not counted as gain)`, `දාපු/ගත්ත මුදල්: ${fmtRs(added)} (ලාභයට ගණන් නැහැ)`, `Added/removed: ${fmtRs(added)}`));
+  const hi = used.reduce((m, s) => (s.mv > m.mv ? s : m), used[0]);
+  lines.push(pick(st, `Highest value: ${fmtRs(hi.mv)} on ${hi.day}`, `වැඩිම වටිනාකම: ${fmtRs(hi.mv)} (${hi.day})`, `Peak: ${fmtRs(hi.mv)} (${hi.day})`));
+  return R(lines.join('\n'), {
+    spark: used.map((s) => s.mv).slice(-120),
+    chips: [chip(pick(st, 'This week', 'මේ සතියේ', 'me sathiye performance')), chip(pick(st, 'This year', 'මේ අවුරුද්දේ', 'me awurudde performance')), chip(pick(st, 'Sector breakdown', 'Sector බෙදීම', 'sector breakdown'))],
+    actions: [tabAct('Open Charts', 'charts')],
+  });
+}
+
+/* ---------- Sector breakdown ---------- */
+function sectorReply(st) {
+  const s = portfolioStats();
+  if (!s.priced.length) return portfolioReply(st);
+  const by = new Map();
+  for (const r of s.priced) by.set(sectorOf(r.symbol), (by.get(sectorOf(r.symbol)) || 0) + r.value);
+  const rows = [...by.entries()].sort((a, b) => b[1] - a[1]);
+  const lines = [pick(st, '— Your portfolio by sector —', '— Sector අනුව ඔයාගේ portfolio —', '— Sector breakdown —')];
+  for (const [sec, v] of rows) {
+    const pct = (v / s.totalValue) * 100;
+    lines.push(`${'▇'.repeat(Math.max(1, Math.round(pct / 5)))} **${sec}** ${fmtNum(pct, 1)}% (${fmtRs(v)})`);
+  }
+  if (rows[0] && rows[0][1] / s.totalValue >= 0.5 && rows.length > 1) {
+    lines.push(pick(st, `ℹ️ Over half is in ${rows[0][0]}.`, `ℹ️ බාගයකට වඩා ${rows[0][0]} වල.`, `ℹ️ බාගෙට වඩා ${rows[0][0]}.`));
+  }
+  lines.push(DISCLAIMER(st));
+  return R(lines.join('\n'), { actions: [tabAct('Open Charts', 'charts')] });
+}
+
+/* ---------- Log a trade from chat ---------- */
+function tradeConfirmAction(side, sym, qty, price, st) {
+  if (!sym || !qty || !price) return null;
+  const full = A.row(sym) ? A.sym(A.row(sym)) : normalizeSymbol(sym);
+  if (side === 'sell') {
+    const h = heldMap().get(baseOf(full));
+    if (!h || qty > h.qty) return null;
+  }
+  return {
+    label: side === 'sell'
+      ? pick(st, `➕ Log this SELL to History`, `➕ මේ SELL එක History එකට දාන්න`, `➕ SELL එක log කරන්න`)
+      : pick(st, `➕ Log this BUY (updates Portfolio)`, `➕ මේ BUY එක Portfolio එකට දාන්න`, `➕ BUY එක portfolio ekata danna`),
+    trade: { type: side, symbol: full, qty: Math.round(qty), price },
+  };
+}
+
+/** Called by the UI when a confirm button is clicked. */
+function logTradeNow(trade, st) {
+  const h0 = heldMap().get(baseOf(trade.symbol));
+  if (trade.type === 'sell' && (!h0 || trade.qty > h0.qty)) {
+    return R(pick(st, 'You don’t hold that many shares — not logged.', 'ඔයා ළඟ ඒ තරම් shares නැහැ — log කළේ නැහැ.', 'ඒ තරම් shares නැහැ — log කළේ නැහැ.'));
+  }
+  const tx = recordTransaction({ type: trade.type, symbol: trade.symbol, qty: trade.qty, price: trade.price, note: 'via chat' });
+  const h = heldMap().get(baseOf(trade.symbol));
+  const lines = [pick(st,
+    `✓ Logged ${trade.type.toUpperCase()} ${fmtNum(trade.qty, 0)} ${shortSym(trade.symbol)} @ Rs ${fmtNum(trade.price)}.`,
+    `✓ ${trade.type.toUpperCase()} ${fmtNum(trade.qty, 0)} ${shortSym(trade.symbol)} @ Rs ${fmtNum(trade.price)} log කළා.`,
+    `✓ ${trade.type.toUpperCase()} ${fmtNum(trade.qty, 0)} ${shortSym(trade.symbol)} log කළා.`)];
+  if (trade.type === 'sell') lines.push(`Realized: **${fmtRs(tx?.realized)}**`);
+  if (h) lines.push(pick(st, `Now: ${fmtNum(h.qty, 0)} @ avg Rs ${fmtNum(h.avg)} · B.E.S Rs ${fmtNum(h.besPrice)}`, `දැන්: ${fmtNum(h.qty, 0)} @ avg Rs ${fmtNum(h.avg)} · B.E.S Rs ${fmtNum(h.besPrice)}`, `දැන්: ${fmtNum(h.qty, 0)} @ Rs ${fmtNum(h.avg)} · B.E.S ${fmtNum(h.besPrice)}`));
+  else lines.push(pick(st, 'Position closed.', 'Position එක close වුණා.', 'Position close.'));
+  lines.push(pick(st, 'Undo by deleting it in History.', 'වැරදි නම් History එකෙන් delete කරන්න.', 'Undo = History එකෙන් delete.'));
+  return R(lines.join('\n'), { actions: [tabAct('Open Portfolio', 'portfolio'), tabAct('Open History', 'history')] });
 }
 
 /* =====================================================================
  * AI fallback (optional)
  * ===================================================================== */
+let aiState = 'unknown'; // 'unknown' | 'on' | 'off'
+let aiNoticeShown = false;
+
+/** Short, factual context so the AI answers with the user's real numbers. */
+function aiContext(raw, st) {
+  const s = marketStatus();
+  const lines = [
+    `Now: Colombo ${s.hhmm}, ${new Date().toISOString().slice(0, 10)}. Market ${s.open ? 'open' : 'closed'} (Mon–Fri 09:30–14:30).`,
+    `Commission rate set in app: ${fmtNum(A.commissionPct())}%.`,
+  ];
+  const { found } = detectSymbols(raw);
+  const syms = [...new Set([...found, ctx.lastSymbol].filter(Boolean))].slice(0, 4);
+  for (const sym of syms) {
+    const p = A.price(sym);
+    if (p != null) lines.push(`${shortSym(sym)} (${A.name(A.row(sym)) || ''}): last Rs ${fmtNum(p)}, today ${fmtPct(A.chg(sym))}.`);
+  }
+  const personal = st === 'ta' || /\b(my|mine|mage|mge|me|i|portfolio|holding|holdings|profit|loss)\b|මගේ|என்|எனது/i.test(raw);
+  if (personal) {
+    const ps = portfolioStats();
+    if (ps.priced.length) {
+      lines.push(`User portfolio: value Rs ${fmtNum(ps.totalValue)}, cost Rs ${fmtNum(ps.totalCost)}, P/L after sell commission Rs ${fmtNum(ps.pl)}.`);
+      for (const r of ps.priced.slice(0, 15)) {
+        lines.push(`- ${shortSym(r.symbol)}: ${fmtNum(r.qty, 0)} sh, avg ${fmtNum(r.avg)}, now ${fmtNum(r.price)}, B.E.S ${fmtNum(r.bes)}, P/L ${fmtNum(r.pl)} (${fmtNum(r.plPct)}%), signal ${r.status.toUpperCase()}, sector ${sectorOf(r.symbol)}`);
+      }
+    } else {
+      lines.push('User has no holdings with prices.');
+    }
+  }
+  return lines.join('\n');
+}
+
 async function askAI(query, st) {
-  if (!CONFIG.aiEndpoint) return null;
+  if (!CONFIG.aiEndpoint || aiState === 'off') return null;
   const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
   const timer = ctl ? setTimeout(() => ctl.abort(), CONFIG.aiTimeoutMs) : null;
   try {
-    const s = marketStatus();
-    const context = [
-      `Market: ${s.open ? 'open' : 'closed'} (Colombo ${s.hhmm}).`,
-      ctx.lastSymbol ? `Last company discussed: ${ctx.lastName || ''} ${ctx.lastSymbol}, price Rs ${fmtNum(A.price(ctx.lastSymbol))}.` : '',
-      `Reply language style: ${st === 'si' ? 'Sinhala' : st === 'mix' ? 'Sinhala-English mix' : 'English'}.`,
-    ].filter(Boolean).join('\n');
-    const res = await fetch(CONFIG.aiEndpoint, {
+    const res = await fetch(apiUrl(CONFIG.aiEndpoint), {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ messages: [...ctx.turns.slice(-8), { role: 'user', content: query }], context }),
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({
+        messages: [...ctx.turns.slice(-8), { role: 'user', content: query }],
+        context: aiContext(query, st),
+        lang: st,
+      }),
       signal: ctl?.signal,
     });
-    if (!res.ok) return null;
-    const data = await res.json();
-    const reply = typeof data?.reply === 'string' ? data.reply.trim() : '';
-    return reply ? R(reply) : null;
+    const type = res.headers.get('content-type') || '';
+    if (!type.includes('json')) { aiState = 'off'; return null; }
+    const data = await res.json().catch(() => ({}));
+    if (res.status === 503 || res.status === 404) { aiState = 'off'; return null; }
+    if (res.status === 429) {
+      return R(pick(st,
+        'The free AI limit is reached for now — please try again later. I can still answer app, portfolio and company questions.',
+        'Free AI limit එක දැනට ඉවරයි — ටිකකින් ආයෙ try කරන්න. App, portfolio, company ප්‍රශ්න වලට මට තාමත් උත්තර දෙන්න පුළුවන්.',
+        'Free AI limit එක ඉවරයි — ටිකකින් try කරන්න. Portfolio / company ප්‍රශ්න නම් අහන්න පුළුවන්.'), { chips: starterChips(st) });
+    }
+    const reply = res.ok && typeof data?.reply === 'string' ? data.reply.trim() : '';
+    if (!reply) return null;
+    aiState = 'on';
+    let text = reply;
+    if (!aiNoticeShown) {
+      aiNoticeShown = true;
+      text += '\n\n' + pick(st,
+        '✨ AI answer — it can make mistakes; check numbers in the app. Not investment advice.',
+        '✨ AI උත්තරයක් — වැරදි වෙන්න පුළුවන්; numbers app එකෙන් check කරන්න. Investment advice නෙවෙයි.',
+        '✨ AI answer — වැරදි වෙන්න පුළුවන්, numbers app එකෙන් check කරන්න. Advice නෙවෙයි.');
+    }
+    return R(text, { ai: true });
   } catch {
     return null;
   } finally {
@@ -1176,6 +1778,18 @@ const RX = {
   caps: /what can you do|help me|what do you do|features|මොනවද කරන්න පුළුවන්|monawada karanna puluwan|^help$/i,
   thanks: /^(thanks|thank you|thx|ty|sthuthi|isthuthi|ස්තූතියි|ස්තුතියි)[!.\s]*$/i,
   clear: /^(clear|reset|clear chat|new chat)$/i,
+  brief: /\b(brief|daily brief|morning brief|summary today|today'?s? (summary|update)|ada mokada|ada update)\b|අද සාරාංශ|^good morning[!.\s]*$/i,
+  alert: /\balerts?\b|\bnotify\b|\btell me when\b|\bremind\b|\bmathak\b|\bdanwanna\b|දන්වන්න|මතක් කරන්න/i,
+  alertWeak: /\bkiyanna\b|\bkiyanawada\b|කියන්න/i,
+  dividends: /(xd|dividends?|divs?|ලාභාංශ)/i,
+  divWhen: /\b(upcoming|next|coming|ena|enne|dates?|mage|my|kawada|kawadada|when|list|income|keeyada|kiyada|labenne|labena|enawa)\b|එන|ලැබෙන|මගේ|කවදා/i,
+  divIncome: /income|keeyada|kiyada|labenne|labena|how much|ආදායම|ලැබෙන/i,
+  realized: /realized|realised|wikunala|vikunala|wikunapu|vikunapu|sold|booked|විකුණලා|විකුණපු|(profit|labaya|ලාභ).*(this year|me awurudde|awurudde|අවුරුද්දේ)/i,
+  trades: /\b(last|recent|mage|my)\s*(trades?|transactions?)\b|trade history|transaction history/i,
+  perf: /performance|kohomada giye|kohomada giya|progress|growth|value history|(this|last|me|pahugiya)\s*(week|month|year|sathiye|maase|awurudde)|සතියේ|මාසේ|portfolio.*(history|trend)/i,
+  sector: /sector|diversif|allocation|bedila|බෙදීම|විවිධ/i,
+  newsWord: /\bnews\b|පුවත්|\bheadlines?\b/i,
+  annWord: /announcements?|disclosures?|filings?|nivedana|නිවේදන/i,
   followup: /\b(price|mila|eke|it|its|that|details|more|wisthara|52w|beta|market cap|mcap)\b|මිල|විස්තර|ඒකේ/i,
   companyWord: /company|share|stock|plc|ltd|overview|details|symbol|ticker|ගැන|කොටස|මිල|විස්තර|plantations?|bank|finance|holdings?|hotels?|tobacco|leasing|insurance|about\s+|gana\b/i,
 };
@@ -1190,6 +1804,7 @@ async function respond(query) {
   if (isGreeting(raw)) return greetingReply(st);
   if (RX.thanks.test(q)) return R(pick(st, 'You’re welcome! 😊', 'සතුටුයි! 😊', 'Welcome! 😊'));
   if (RX.caps.test(q)) return capabilitiesReply(st);
+  if (RX.brief.test(q)) return briefReply(st);
 
   // Load symbols only if the text might contain one (cheap check)
   if (/[A-Za-z]{2,}/.test(raw)) {
@@ -1198,6 +1813,23 @@ async function respond(query) {
   const { found: syms, suggestions } = detectSymbols(raw);
   const sym = syms[0] || null;
   const hasNum = /\d/.test(raw.replace(/\b[A-Za-z]{2,8}\.[A-Za-z]\d{4}\b/g, ''));
+
+  // Tamil → AI (with the user's live numbers as context)
+  if (st === 'ta') {
+    const ai = await askAI(raw, st);
+    if (ai) return ai;
+  }
+
+  // Price alerts: "alert COMB 160", "COMB 140ට බැස්සොත් කියන්න", "my alerts"
+  if ((RX.alert.test(raw) || (RX.alertWeak.test(raw) && hasNum && sym)) && !/what is|mokakda|meaning/.test(q) && !/\b(sell|near)\s*alerts?\b/i.test(q)) {
+    return alertReply(raw, q, sym, st);
+  }
+
+  // What-if / average down / target profit
+  if (hasNum) {
+    const w = whatIfReply(raw, q, sym || (ctx.lastSymbol && /\b(eke|it|its|that)\b|ඒක/.test(q) ? ctx.lastSymbol : null), st);
+    if (w) return w;
+  }
 
   // 1) Advice requests → no advice, but offer data
   if (RX.advice.test(q)) {
@@ -1226,6 +1858,25 @@ async function respond(query) {
   if (RX.compare.test(q) && syms.length === 1 && ctx.lastSymbol && baseOf(ctx.lastSymbol) !== baseOf(syms[0])) {
     return compareReply(ctx.lastSymbol, syms[0], st);
   }
+
+  // 3b) Dividends on your shares / income
+  if (RX.dividends.test(raw) && !hasNum && !/what is|mokakda|mokadda|meaning|kiyanne|තේරුම|මොකද/.test(q) && (RX.divWhen.test(raw) || /^(upcoming )?(xd|dividends?)\??$/i.test(q))) {
+    return dividendsReply(st, RX.divIncome.test(raw) ? 'income' : 'list');
+  }
+
+  // 3c) Company news / announcements
+  const newsSym = sym || (ctx.lastSymbol && /\b(eke|it|its|that|ewa)\b|ඒකේ/.test(q) ? ctx.lastSymbol : null);
+  if (RX.annWord.test(raw)) return announcementsReply(st, newsSym);
+  if (RX.newsWord.test(raw) && newsSym && !RX.open.test(q.replace(/\bshow\b/, ''))) {
+    const hit = await resolveBySymbol(newsSym);
+    if (hit) { ctx.lastSymbol = hit.symbol; return companyNewsReply(hit.symbol, st); }
+  }
+
+  // 3d) History, performance, sectors
+  if (RX.realized.test(raw) && !hasNum) return realizedReply(st);
+  if (RX.trades.test(raw)) return tradesReply(st);
+  if (RX.perf.test(raw) && !sym) return performanceReply(raw, st);
+  if (RX.sector.test(raw) && !sym) return sectorReply(st);
 
   // 4) Portfolio
   if (!hasNum && !/what is|mokakda|mokadda|meaning|kiyanne|තේරුම|මොකද/.test(q) &&
@@ -1320,13 +1971,13 @@ function translateUrl(text, toLang) {
   return `https://translate.google.com/?sl=auto&tl=${encodeURIComponent(toLang || 'si')}&text=${encodeURIComponent(text)}&op=translate`;
 }
 
-/** Safe mini-markdown: **bold**, URLs, “— header —” lines. No innerHTML. */
+/** Safe mini-markdown: **bold**, [text](https://…), URLs, “— header —” lines. No innerHTML. */
 function renderRich(node, text) {
   String(text).split('\n').forEach((line, i) => {
     if (i) node.appendChild(document.createElement('br'));
     const isHdr = /^—.*—$/.test(line.trim());
     const target = isHdr ? node.appendChild(el('strong', 'cse-chat-h')) : node;
-    const re = /(\*\*[^*]+\*\*|https?:\/\/[^\s)]+)/g;
+    const re = /(\*\*[^*]+\*\*|\[[^\]]+\]\(https?:\/\/[^\s)]+\)|https?:\/\/[^\s)]+)/g;
     let last = 0;
     let m;
     while ((m = re.exec(line))) {
@@ -1334,6 +1985,14 @@ function renderRich(node, text) {
       const tok = m[0];
       if (tok.startsWith('**')) {
         target.appendChild(el('strong', null, tok.slice(2, -2)));
+      } else if (tok.startsWith('[')) {
+        const mm = tok.match(/^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/);
+        const a = document.createElement('a');
+        a.href = mm[2];
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        a.textContent = mm[1];
+        target.appendChild(a);
       } else {
         const a = document.createElement('a');
         a.href = tok;
@@ -1348,7 +2007,38 @@ function renderRich(node, text) {
   });
 }
 
-const plain = (t) => String(t).replace(/\*\*/g, '');
+const plain = (t) => String(t).replace(/\*\*/g, '').replace(/\[([^\]]+)\]\((https?:[^\s)]+)\)/g, '$1');
+
+/** Tiny inline line chart (SVG, no libraries). */
+function sparkSvg(values) {
+  const NS = 'http://www.w3.org/2000/svg';
+  const w = 240, h = 48, pad = 3;
+  const min = Math.min(...values), max = Math.max(...values);
+  const span = max - min || 1;
+  const pts = values.map((v, i) => [
+    pad + (i * (w - pad * 2)) / Math.max(1, values.length - 1),
+    h - pad - ((v - min) / span) * (h - pad * 2),
+  ]);
+  const up = values[values.length - 1] >= values[0];
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  svg.setAttribute('class', `cse-chat-spark ${up ? 'up' : 'down'}`);
+  svg.setAttribute('role', 'img');
+  svg.setAttribute('aria-label', `Trend ${up ? 'up' : 'down'}: ${fmtNum(values[0])} to ${fmtNum(values[values.length - 1])}`);
+  const area = document.createElementNS(NS, 'path');
+  area.setAttribute('d', `M${pts[0][0]},${h - pad} ` + pts.map((p) => `L${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ') + ` L${pts[pts.length - 1][0]},${h - pad} Z`);
+  area.setAttribute('class', 'a');
+  const line = document.createElementNS(NS, 'polyline');
+  line.setAttribute('points', pts.map((p) => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' '));
+  line.setAttribute('class', 'l');
+  const dot = document.createElementNS(NS, 'circle');
+  dot.setAttribute('cx', pts[pts.length - 1][0]);
+  dot.setAttribute('cy', pts[pts.length - 1][1]);
+  dot.setAttribute('r', '2.5');
+  dot.setAttribute('class', 'd');
+  svg.append(area, line, dot);
+  return svg;
+}
 
 function store(key, val) {
   try { sessionStorage.setItem(key, JSON.stringify(val)); } catch { /* private mode */ }
@@ -1517,11 +2207,14 @@ export function initChatbot() {
     const bubble = el('div', `cse-chat-bubble ${who}`);
     if (who === 'bot') renderRich(bubble, text);
     else bubble.textContent = text;
+    const spark = typeof msg === 'object' && Array.isArray(msg.spark) && msg.spark.length >= 2 ? msg.spark : null;
+    if (spark) bubble.appendChild(sparkSvg(spark));
+    if (typeof msg === 'object' && msg.ai) bubble.classList.add('ai');
     wrap.appendChild(bubble);
 
     if (who === 'bot') {
       const acts = (typeof msg === 'object' && msg.actions) || [];
-      if (acts.length) {
+      if (acts.some((a) => a.url || a.tab || (a.trade && save))) {
         const row = el('div', 'cse-chat-actions');
         for (const a of acts) {
           if (a.url) {
@@ -1529,6 +2222,23 @@ export function initChatbot() {
             link.href = a.url;
             if (/^https?:/.test(a.url)) { link.target = '_blank'; link.rel = 'noopener noreferrer'; }
             row.appendChild(link);
+          } else if (a.trade && save) {
+            // Log a trade from chat — only on fresh messages (never from restored history)
+            const b = el('button', 'cse-chat-act primary', a.label);
+            b.type = 'button';
+            b.addEventListener('click', () => {
+              b.disabled = true;
+              b.textContent = '✓';
+              try {
+                const res = logTradeNow(a.trade, lastStyle);
+                addMsg(res, 'bot');
+                toast(plain(res.text.split('\n')[0]));
+              } catch (err) {
+                console.warn('[chatbot] log trade', err);
+                addMsg(pick(lastStyle, 'Could not log the trade — try in the History tab.', 'Trade එක log කරන්න බැරි වුණා — History tab එකෙන් try කරන්න.', 'Log වුණේ නැහැ — History tab එකෙන් කරන්න.'), 'bot');
+              }
+            });
+            row.appendChild(b);
           } else if (a.tab) {
             const b = el('button', 'cse-chat-act', a.label + ' →');
             b.type = 'button';
@@ -1556,6 +2266,7 @@ export function initChatbot() {
       aEn.href = translateUrl(plain(text).slice(0, 1800), 'en');
       aEn.target = '_blank';
       aEn.rel = 'noopener noreferrer';
+      if (typeof msg === 'object' && msg.ai) tools.prepend(el('span', 'cse-chat-aitag', '✨ AI'));
       tools.append(copy, aSi, aEn);
       wrap.appendChild(tools);
     }
@@ -1567,6 +2278,8 @@ export function initChatbot() {
         who,
         text,
         actions: typeof msg === 'object' ? (msg.actions || []).filter((a) => a.tab || a.url) : [],
+        spark: typeof msg === 'object' && msg.spark ? msg.spark : null,
+        ai: typeof msg === 'object' && !!msg.ai,
         t: Date.now(),
       });
       persist();
@@ -1587,7 +2300,7 @@ export function initChatbot() {
   function restore() {
     msgs.replaceChildren();
     for (const h of history.slice(-CONFIG.maxHistory)) {
-      addMsg({ text: h.text, actions: h.actions || [] }, h.who, { save: false });
+      addMsg({ text: h.text, actions: h.actions || [], spark: h.spark, ai: h.ai }, h.who, { save: false });
       if (h.who === 'user') ctx.turns.push({ role: 'user', content: h.text });
       else ctx.turns.push({ role: 'assistant', content: plain(h.text) });
     }
@@ -1609,9 +2322,39 @@ export function initChatbot() {
     fab.classList.remove('has-dot');
     updateStatus();
     if (!msgs.childElementCount) {
-      if (history.length) { restore(); setChips(starterChips(lastStyle)); } else welcome();
+      if (history.length) { restore(); setChips(starterChips(lastStyle)); }
+      else if (wantsBrief()) showBrief();
+      else welcome();
     }
     input.focus();
+  }
+
+  /** First open of the day (with holdings) → daily brief instead of the plain welcome. */
+  function wantsBrief() {
+    if (!A.holdings().length) return false;
+    const day = new Date().toISOString().slice(0, 10);
+    try {
+      if (localStorage.getItem('cseChat.briefDay') === day) return false;
+      localStorage.setItem('cseChat.briefDay', day);
+    } catch { /* ignore */ }
+    return true;
+  }
+
+  async function showBrief() {
+    const typing = el('div', 'cse-chat-msg bot');
+    const dots = el('div', 'cse-chat-bubble bot cse-chat-thinking');
+    dots.append(el('span'), el('span'), el('span'));
+    typing.appendChild(dots);
+    msgs.appendChild(typing);
+    try {
+      const r = await briefReply(lastStyle);
+      typing.remove();
+      addMsg(r, 'bot');
+      setChips(r.chips);
+    } catch {
+      typing.remove();
+      welcome();
+    }
   }
 
   function close() {
@@ -1709,6 +2452,25 @@ export function initChatbot() {
 
   updateStatus();
   setInterval(updateStatus, 60_000);
+
+  // Price alerts: checked every time the app refreshes prices.
+  onChange((topic) => {
+    if (topic !== 'prices' && topic !== 'all') return;
+    const fired = checkAlerts();
+    if (!fired.length) return;
+    const st = lastStyle;
+    const txt = fired.map((a) => `⏰ **${shortSym(a.sym)}** ${pick(st, 'is now', 'දැන්', 'දැන්')} Rs ${fmtNum(a.now)} (${pick(st, 'alert', 'alert', 'alert')} ${a.dir === 'above' ? '≥' : '≤'} ${fmtNum(a.price)})`).join('\n');
+    toast(plain(txt).replace(/\n/g, ' · '), { ms: 6000 });
+    try {
+      if (state.settings?.notify && 'Notification' in window && Notification.permission === 'granted') {
+        new Notification('CSE Portfolio — price alert', { body: plain(txt), icon: 'assets/icons/icon-192.png', tag: 'cse-chat-alert' });
+      }
+    } catch { /* some mobile browsers only allow notifications from a service worker */ }
+    if (!msgs.childElementCount && history.length) restore();
+    addMsg(R(txt), 'bot');
+    setChips(fired.map((a) => chip(shortSym(a.sym))));
+    if (panel.hidden) fab.classList.add('has-dot');
+  });
 }
 
 /** Exposed for tests / other modules (e.g. open the chat with a question). */

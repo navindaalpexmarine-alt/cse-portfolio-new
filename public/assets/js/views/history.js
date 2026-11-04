@@ -48,27 +48,17 @@ export function render() {
   }).join('');
 }
 
-async function addTransaction(e) {
-  e.preventDefault();
-  const type = $('#txType').value === 'sell' ? 'sell' : 'buy';
-  const symbol = normalizeSymbol($('#txSym').value).slice(0, 24);
-  const qty = num($('#txQty').value);
-  const price = num($('#txPrice').value);
-  const date = $('#txDate').value || todayISO();
-  const note = $('#txNote').value.trim().slice(0, 200);
-  if (!symbol || qty <= 0 || price <= 0) { toast('Symbol, qty and price are required', { error: true }); return; }
-
+/**
+ * Logs a BUY/SELL and keeps the matching holding in sync (average-cost method).
+ * Shared by the History form and the help chatbot. Returns the stored transaction.
+ */
+export function recordTransaction({ type, symbol, qty, price, date = todayISO(), note = '' }) {
   const rate = state.commissionRate;
   const gross = qty * price;
   const fee = gross * (rate / 100);
   const net = type === 'buy' ? gross + fee : gross - fee;
   const h = state.holdings.find((x) => x.name === symbol);
 
-  if (type === 'sell' && (!h || qty > h.balance)) {
-    const ok = await confirmDialog('Sell more than you hold?',
-      `Portfolio shows ${h ? h.balance : 0} ${symbol}. Log this SELL of ${qty} anyway?`, { confirmLabel: 'Log anyway' });
-    if (!ok) return;
-  }
   const realized = type === 'sell' ? net - costBasisForSymbol(symbol) * qty : 0;
   state.transactions.push({ type, symbol, qty, price, gross, fee, net, realized, date, note, ts: Date.now() });
 
@@ -87,7 +77,28 @@ async function addTransaction(e) {
     if (newBal === 0) state.holdings = state.holdings.filter((x) => x !== h);
     else { h.totalCost = round2(h.totalCost * (newBal / h.balance)); h.balance = newBal; }
   }
+  const tx = state.transactions[state.transactions.length - 1];
   commit('transactions');
+  return tx;
+}
+
+async function addTransaction(e) {
+  e.preventDefault();
+  const type = $('#txType').value === 'sell' ? 'sell' : 'buy';
+  const symbol = normalizeSymbol($('#txSym').value).slice(0, 24);
+  const qty = num($('#txQty').value);
+  const price = num($('#txPrice').value);
+  const date = $('#txDate').value || todayISO();
+  const note = $('#txNote').value.trim().slice(0, 200);
+  if (!symbol || qty <= 0 || price <= 0) { toast('Symbol, qty and price are required', { error: true }); return; }
+
+  const h = state.holdings.find((x) => x.name === symbol);
+  if (type === 'sell' && (!h || qty > h.balance)) {
+    const ok = await confirmDialog('Sell more than you hold?',
+      `Portfolio shows ${h ? h.balance : 0} ${symbol}. Log this SELL of ${qty} anyway?`, { confirmLabel: 'Log anyway' });
+    if (!ok) return;
+  }
+  const { realized } = recordTransaction({ type, symbol, qty, price, date, note });
   toast(type === 'buy' ? 'Buy logged ✓' : `Sell logged · realized ${fmt(realized)}`);
   $('#txNote').value = '';
 }
