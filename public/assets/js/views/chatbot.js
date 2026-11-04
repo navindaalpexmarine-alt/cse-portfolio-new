@@ -245,6 +245,8 @@ const NOT_SYMBOL = new Set([
   'dps', 'bes', 'cds', 'sec', 'ipo', 'beta', 'yield', 'top', 'gainers', 'losers', 'active', 'and',
   'hello', 'hey', 'thanks', 'thank', 'mila', 'ada', 'kiyak', 'eka', 'ekak', 'meka', 'wala', 'walin',
   'please', 'pls', 'can', 'how', 'why', 'when', 'who', 'which', 'many', 'much', 'lakh', 'per',
+  // common finance / everyday abbreviations that are not tickers
+  'cse', 'sl', 'lk', 'usd', 'lkr', 'gdp', 'cbsl', 'imf', 'ai', 'faq', 'atm', 'pdf', 'ok', 'etf', 'nav', 'roi', 'roe', 'tax', 'wht', 'vat',
 ]);
 
 let _knownCache = { n: -1, set: new Set() };
@@ -1940,8 +1942,8 @@ async function respond(query) {
     if (hit) return companyReply(hit, st);
   }
 
-  // 12) Typo suggestions
-  if (suggestions.length) {
+  // 12) Typo suggestions — only for short, ticker-like messages (a sentence goes to the AI instead)
+  if (suggestions.length && raw.split(/\s+/).length <= 3) {
     const s = suggestions[0];
     return R(pick(st, `I couldn’t find ${s.typed}. Did you mean **${s.best}**?`, `${s.typed} හම්බුණේ නැහැ. **${s.best}** ද?`, `${s.typed} නැහැ — **${s.best}** ද කිව්වේ?`), { chips: [chip(s.best)] });
   }
