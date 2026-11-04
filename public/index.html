@@ -494,6 +494,7 @@
       Auto-refresh every 3 min while this tab is open. Your holdings are highlighted.
     </div>
     <div class="summary news-hero" id="newsHero"></div>
+    <div class="panel news-mine" id="newsMine" hidden></div>
     <div class="panel">
       <div class="panel-head">
         <h2>Market news · decide with sources</h2>
@@ -505,6 +506,7 @@
       <div class="news-toolbar">
         <div class="news-chips" id="newsChips" role="group" aria-label="Filter news">
           <button type="button" class="news-chip on" data-nf="all" aria-pressed="true">All</button>
+          <button type="button" class="news-chip" data-nf="new" aria-pressed="false">🆕 New</button>
           <button type="button" class="news-chip" data-nf="portfolio" aria-pressed="false">My holdings</button>
           <button type="button" class="news-chip" data-nf="fin" aria-pressed="false">Financial results</button>
           <button type="button" class="news-chip" data-nf="cse" aria-pressed="false">CSE official</button>
@@ -529,6 +531,18 @@
   <!-- ========== FUNDAMENTALS ========== -->
   <section class="view" id="view-fund" role="tabpanel" aria-labelledby="tab-fund" hidden>
     <div class="tip"><b>Live CSE · full market</b> — search any listed share and view fundamentals (not portfolio-only). Price, market cap, beta, ranges, volumes, turnover.</div>
+
+    <div class="panel" id="watchPanel">
+      <div class="panel-head">
+        <h2>⭐ Watchlist</h2>
+        <form class="watch-add" id="watchAddForm" autocomplete="off">
+          <label class="sr-only" for="watchAddInput">Add a symbol to your watchlist</label>
+          <input class="search" id="watchAddInput" list="fundDatalist" placeholder="Add symbol… e.g. HNB">
+          <button class="btn ghost" type="submit">+ Add</button>
+        </form>
+      </div>
+      <div id="watchBox"></div>
+    </div>
 
     <div class="panel">
       <div class="panel-head">
