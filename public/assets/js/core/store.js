@@ -19,6 +19,7 @@ export const KEYS = {
   valueSnaps: 'cse_value_snap_v1',
   alertSeen: 'cse_alert_seen_v1',
   settings: 'cse_settings_v1',
+  watchlist: 'cse_watchlist_v1',
   theme: 'cse_theme',
 };
 
@@ -41,6 +42,7 @@ export const state = {
   divEvents: [],
   transactions: [],
   valueSnaps: [],
+  watchlist: [],   // symbols the user follows (Fundamentals → Watchlist)
   alertSeen: {},
   commissionRate: DEFAULT_RATE,
   settings: { ...DEFAULT_SETTINGS },
@@ -93,6 +95,10 @@ const sanitizeTx = (t = {}) => ({
   note: String(t.note || '').slice(0, 200),
   ts: Number(t.ts) || Date.now(),
 });
+/** Watchlist: unique upper-case symbols, max 100. */
+const sanitizeWatch = (list) => [...new Set(arr(list)
+  .map((x) => String(x || '').trim().toUpperCase().replace(/[^A-Z0-9.]/g, '').slice(0, 24))
+  .filter(Boolean))].slice(0, 100);
 const sanitizeSnap = (s = {}) => ({ day: String(s.day || '').slice(0, 10), mv: Number(s.mv) || 0, cost: Number(s.cost) || 0, ts: Number(s.ts) || 0 });
 
 function applyData(d) {
@@ -100,6 +106,7 @@ function applyData(d) {
   state.divEvents = arr(d.divEvents).map(sanitizeEvent);
   state.transactions = arr(d.transactions).map(sanitizeTx);
   state.valueSnaps = arr(d.valueSnaps).map(sanitizeSnap).filter((s) => s.day).slice(-365);
+  state.watchlist = sanitizeWatch(d.watchlist);
   state.alertSeen = d.alertSeen && typeof d.alertSeen === 'object' ? d.alertSeen : {};
   const r = parseFloat(d.commissionRate);
   state.commissionRate = Number.isFinite(r) && r >= 0 && r < 50 ? r : DEFAULT_RATE;
@@ -114,6 +121,7 @@ export function load() {
     divEvents: read(KEYS.divEvents, []),
     transactions: read(KEYS.transactions, []),
     valueSnaps: read(KEYS.valueSnaps, []),
+    watchlist: read(KEYS.watchlist, []),
     alertSeen: read(KEYS.alertSeen, {}),
     commissionRate: read(KEYS.rate, DEFAULT_RATE),
     settings: read(KEYS.settings, {}),
@@ -139,6 +147,7 @@ export function saveNow({ sync = true } = {}) {
     write(KEYS.divEvents, state.divEvents);
     write(KEYS.transactions, state.transactions);
     write(KEYS.valueSnaps, state.valueSnaps);
+    write(KEYS.watchlist, state.watchlist);
     write(KEYS.alertSeen, state.alertSeen);
     write(KEYS.settings, state.settings);
     setSaveStatus('Saved', false);
@@ -181,6 +190,7 @@ export function snapshotData() {
     divEvents: state.divEvents,
     transactions: state.transactions,
     valueSnaps: state.valueSnaps,
+    watchlist: state.watchlist,
     alertSeen: state.alertSeen,
     settings: state.settings,
   };
@@ -227,7 +237,7 @@ export function importBackup(obj) {
 
 /** Empties the portfolio (locally and, via sync, in the account). Settings and theme are kept. */
 export function resetAll() {
-  applyData({ holdings: [], settings: state.settings });
+  applyData({ holdings: [], settings: state.settings, watchlist: state.watchlist });
   saveNow();
   emit('all');
 }
