@@ -1,7 +1,8 @@
 /**
- * Small, dependency-free helpers shared by every module.
+ * Small helpers shared by every module.
  */
 
+import { parseDate } from './dates.js';
 export const $ = (sel, root = document) => root.querySelector(sel);
 export const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
@@ -54,8 +55,8 @@ export const todayISO = () => {
 };
 export function fmtDate(when, withTime = false) {
   if (!when) return '—';
-  const d = typeof when === 'number' ? new Date(when) : new Date(String(when));
-  if (Number.isNaN(d.getTime())) return String(when);
+  const d = parseDate(when); // understands every CSE date format (core/dates.js)
+  if (!d) return String(when);
   const opts = { day: '2-digit', month: 'short', year: 'numeric' };
   if (withTime) Object.assign(opts, { hour: '2-digit', minute: '2-digit' });
   return d.toLocaleString('en-GB', opts);
