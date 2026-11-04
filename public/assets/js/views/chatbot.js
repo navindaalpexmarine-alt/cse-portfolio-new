@@ -21,6 +21,8 @@ import { $ } from '../core/utils.js';
 import { ensureMarketSymbols } from '../core/symbols.js';
 import { state } from '../core/store.js';
 import { cse } from '../core/api.js';
+import { go } from '../core/router.js';
+import { computeRow, calcBes } from '../core/finance.js';
 
 /* =====================================================================
  * CONFIG — change these if needed
@@ -28,7 +30,7 @@ import { cse } from '../core/api.js';
 const CONFIG = {
   /** Used only if the app's commission % can't be found. */
   defaultCommissionPct: 1.12,
-  /** Set to '/api/chat' after deploying api/chat.mjs. Empty = AI off. */
+  /** Set to 'api/chat' after deploying api/chat.js. Empty = AI off. */
   aiEndpoint: '',
   aiTimeoutMs: 15000,
   historyKey: 'cseChat.v2.history',
@@ -100,39 +102,22 @@ const A = {
   price(sym) {
     const p = A.pm(sym);
     const r = A.row(sym);
-    return num(pickKey(p, PRICE_KEYS)) ?? num(pickKey(r, PRICE_KEYS));
+    const own = (state.holdings || []).find((h) => baseOf(h.name) === baseOf(sym) && Number(h.tradedPrice) > 0);
+    return num(pickKey(p, PRICE_KEYS)) ?? num(pickKey(r, PRICE_KEYS)) ?? (own ? Number(own.tradedPrice) : null);
   },
   chg(sym) {
     return num(pickKey(A.pm(sym), CHG_KEYS)) ?? num(pickKey(A.row(sym), CHG_KEYS));
   },
-  /** Holdings → [{symbol, qty, avg}] — tries common shapes. */
+  /** Holdings from the app: {name: 'COMB.N0000', balance, avgPrice, besPrice, totalCost, tradedPrice} */
   holdings() {
-    const p = state.portfolio;
-    const cands = [
-      p?.holdings, p?.items, p?.shares, p?.positions,
-      Array.isArray(p) ? p : null,
-      state.holdings, state.positions,
-    ];
-    let list = cands.find((c) => Array.isArray(c));
-    if (!list) {
-      const obj = [p?.holdings, p, state.holdings].find((c) => c && typeof c === 'object' && !Array.isArray(c));
-      if (obj) {
-        list = Object.entries(obj)
-          .filter(([, v]) => v && typeof v === 'object')
-          .map(([k, v]) => ({ symbol: k, ...v }));
-      }
-    }
-    if (!list) return [];
-    return list.map((h) => ({
-      symbol: String(pickKey(h, ['symbol', 'sym', 'ticker']) || '').toUpperCase(),
-      qty: num(pickKey(h, ['qty', 'quantity', 'shares', 'units', 'q'])) || 0,
-      avg: num(pickKey(h, ['avg', 'avgPrice', 'avg_price', 'averagePrice', 'buyPrice', 'cost', 'price'])) || 0,
-    })).filter((h) => h.symbol && h.qty > 0);
+    return (Array.isArray(state.holdings) ? state.holdings : [])
+      .filter((h) => h && h.name && Number(h.balance) > 0)
+      .map((h) => ({ ...h, symbol: String(h.name).toUpperCase(), qty: Number(h.balance) || 0, avg: Number(h.avgPrice) || 0 }));
   },
   /** Commission % from app state, header input, or default. */
   commissionPct() {
     const cand = [
-      state.commission, state.commissionPct, state.commPct,
+      state.commissionRate, state.commission, state.commissionPct,
       state.settings?.commission, state.settings?.commissionPct,
     ].map(num).find((v) => v != null && v > 0 && v < 10);
     if (cand != null) return cand;
@@ -301,7 +286,7 @@ function detectSymbols(raw) {
 }
 
 /* =====================================================================
- * Company resolution by name (kept from v1, works with symbolSearch)
+ * Company resolution (market list + companyInfoSummery)
  * ===================================================================== */
 const STOP = new Set([
   'plc', 'ltd', 'limited', 'company', 'companies', 'the', 'and', 'of', 'sri', 'lanka',
@@ -328,20 +313,17 @@ function scoreName(query, name, sym) {
   return sc;
 }
 
-function cleanSearchRows(data) {
-  return (data?.reqCompanySymbol || []).filter(
-    (r) => r.symbol && !String(r.symbol).includes('"') && r.name && r.name !== 'NOT DEFINED'
-  );
-}
-
+/** Market list first; otherwise ask the CSE directly (works for shares not traded today). */
 async function resolveBySymbol(base) {
   const hit = A.row(base);
   if (hit) return { symbol: A.sym(hit), name: A.name(hit) };
+  const up = String(base || '').toUpperCase();
+  const full = up.includes('.') ? up : `${up}.N0000`;
   try {
-    const rows = cleanSearchRows(await cseCached('symbolSearch', { symbol: baseOf(base) }));
-    const r = rows.find((x) => /\.N0000$/i.test(x.symbol)) || rows[0];
-    if (r) return { symbol: r.symbol, name: r.name, id: r.id };
-  } catch { /* offline */ }
+    const raw = await cseCached('companyInfoSummery', { symbol: full });
+    const info = raw?.reqSymbolInfo || {};
+    if (info.symbol || info.name) return { symbol: info.symbol || full, name: info.name || full };
+  } catch { /* unknown symbol / offline */ }
   return null;
 }
 
@@ -356,19 +338,6 @@ async function resolveByName(query) {
   }
   if (best && bestScore >= 12) return { symbol: A.sym(best), name: A.name(best) };
 
-  const tokens = q.toLowerCase().replace(/[?.!,]/g, ' ').split(/\s+/).filter((t) => t.length >= 4 && !STOP.has(t) && !NOT_SYMBOL.has(t));
-  for (const t0 of tokens.slice(0, 3)) {
-    try {
-      const rows = cleanSearchRows(await cseCached('symbolSearch', { symbol: t0.slice(0, 4).toUpperCase() }));
-      let localBest = null;
-      let localSc = 0;
-      for (const r of rows) {
-        const sc = scoreName(q, r.name, r.symbol) + (/\.N0000$/i.test(r.symbol) ? 2 : 0);
-        if (sc > localSc) { localSc = sc; localBest = r; }
-      }
-      if (localBest && localSc >= 12) return { symbol: localBest.symbol, name: localBest.name, id: localBest.id };
-    } catch { /* ignore */ }
-  }
   return null;
 }
 
@@ -378,7 +347,7 @@ async function resolveByName(query) {
 /** chips: [{label, q}] → sends q; actions: [{label, tab}] or [{label, url}] */
 const R = (text, opts = {}) => ({ text, chips: opts.chips || [], actions: opts.actions || [] });
 const chip = (label, q) => ({ label, q: q || label });
-const tabAct = (label, tab) => ({ label, tab });
+const tabAct = (label, tab, sym) => (sym ? { label, tab, sym } : { label, tab });
 
 const DISCLAIMER = (st) => pick(st, 'Not investment advice.', 'Investment advice නෙවෙයි.', 'Advice නෙවෙයි.');
 
@@ -386,32 +355,24 @@ const DISCLAIMER = (st) => pick(st, 'Not investment advice.', 'Investment advice
  * Tabs / navigation
  * ===================================================================== */
 const TABS = [
-  { id: 'portfolio', key: '1', label: 'Portfolio', re: /portfolio|පෝට්ෆෝලියෝ/ },
-  { id: 'calculator', key: '2', label: 'Calculator', re: /calculator|\bcalc\b|කැල්කියුලේටර්/ },
-  { id: 'dividends', key: '3', label: 'Dividends', re: /dividends?|ලාභාංශ/ },
-  { id: 'charts', key: '4', label: 'Charts', re: /charts?\b|ප්‍රස්ථාර/ },
-  { id: 'history', key: '5', label: 'History', re: /history|ඉතිහාස/ },
-  { id: 'news', key: '6', label: 'News', re: /news|පුවත්/ },
-  { id: 'fundamentals', key: '7', label: 'Fundamentals', re: /fundamentals?/ },
-  { id: 'technical', key: '8', label: 'Technical', re: /technicals?/ },
+  { id: 'portfolio', label: 'Portfolio', re: /portfolio|පෝට්ෆෝලියෝ/ },
+  { id: 'calc', label: 'Calculator', re: /calculator|\bcalc\b|කැල්කියුලේටර්/ },
+  { id: 'div', label: 'Dividends', re: /dividends?|ලාභාංශ/ },
+  { id: 'charts', label: 'Charts', re: /charts?\b|ප්‍රස්ථාර/ },
+  { id: 'history', label: 'History', re: /history|ඉතිහාස/ },
+  { id: 'news', label: 'News', re: /news|පුවත්/ },
+  { id: 'fund', label: 'Fundamentals', re: /fundamentals?/ },
+  { id: 'tech', label: 'Technical', re: /technicals?/ },
 ];
 
-function openTab(id) {
-  const t = TABS.find((x) => x.id === id);
-  if (!t || typeof document === 'undefined') return false;
-  const want = t.label.toLowerCase();
-  const cands = document.querySelectorAll('[role="tab"], nav button, nav a, .tabs button, .tab, [data-tab]');
-  for (const c of cands) {
-    if (c.closest('#cseChatRoot')) continue;
-    const txt = (c.textContent || '').trim().toLowerCase();
-    const dt = (c.dataset?.tab || '').toLowerCase();
-    if (txt.startsWith(want) || dt === t.id || dt === want) {
-      c.click();
-      return true;
-    }
+/** Opens a tab through the app router. Fundamentals/Technical accept { sym }. */
+function openTab(id, sym) {
+  if (!TABS.some((t) => t.id === id)) return false;
+  try {
+    go(id, sym ? { sym } : null);
+  } catch {
+    location.hash = id;
   }
-  // Fallback: the app's own keyboard shortcut (1–8)
-  document.dispatchEvent(new KeyboardEvent('keydown', { key: t.key, bubbles: true }));
   return true;
 }
 
@@ -438,8 +399,16 @@ function marketStatus(date) {
 
 const hm = (m) => (m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`);
 
-function marketHoursReply(st) {
+async function marketHoursReply(st) {
   const s = marketStatus();
+  // The CSE's own status also knows about public holidays.
+  let official = '';
+  try {
+    const d = await cseCached('marketStatus', {});
+    official = String(d?.status || '').trim();
+  } catch { /* offline */ }
+  if (/open/i.test(official) && !s.open) { s.open = true; s.left = Math.max(0, CONFIG.closeMin - colomboClock().mins); }
+  if (/clos/i.test(official) && s.open) { s.open = false; s.until = null; }
   let en, si;
   if (s.open) {
     en = `🟢 CSE is OPEN now (Colombo ${s.hhmm}). Closes at 14:30 — ${hm(s.left)} left.`;
@@ -451,7 +420,9 @@ function marketHoursReply(st) {
     en = `🔴 CSE is closed now (Colombo ${s.hhmm}${s.weekend ? ', weekend' : ''}). Trading: Mon–Fri 09:30–14:30.`;
     si = `🔴 CSE දැන් වහලා (කොළඹ ${s.hhmm}${s.weekend ? ', සති අන්තය' : ''}). Trading: සඳුදා–සිකුරාදා 09:30–14:30.`;
   }
-  const note = pick(st, 'Public holidays are not checked — confirm on cse.lk.', 'Public holidays check කරන්නේ නැහැ — cse.lk බලන්න.', 'Holidays check වෙන්නේ නැහැ — cse.lk එකෙන් confirm කරන්න.');
+  const note = official
+    ? pick(st, `CSE status: ${official}`, `CSE status: ${official}`, `CSE status: ${official}`)
+    : pick(st, 'Couldn’t reach the CSE status — public holidays not checked.', 'CSE status එක ගන්න බැරි වුණා — holidays check වුණේ නැහැ.', 'CSE status නැහැ — holidays check වුණේ නැහැ.');
   return R(`${pick(st, en, si, si)}\n${note}`, { chips: [chip('Top gainers'), chip('ASPI today')] });
 }
 
@@ -473,9 +444,27 @@ function marketRows() {
   }).filter((r) => r.symbol && r.price);
 }
 
-async function moversReply(kind, st) {
+/** Full trade summary (has turnover & volume); falls back to the cached market list. */
+async function liveMarketRows() {
+  try {
+    const raw = await cseCached('tradeSummary', {});
+    const list = Array.isArray(raw?.reqTradeSummery) ? raw.reqTradeSummery : Array.isArray(raw) ? raw : [];
+    const rows = list.map((r) => ({
+      symbol: String(r.symbol || '').toUpperCase(),
+      name: r.name || '',
+      price: num(r.price ?? r.lastTradedPrice),
+      chg: num(r.percentageChange ?? r.changePercentage),
+      turnover: num(r.turnover),
+      volume: num(r.sharevolume ?? r.shareVolume ?? r.qty),
+    })).filter((r) => r.symbol && r.price);
+    if (rows.length) return rows;
+  } catch { /* offline */ }
   try { await ensureMarketSymbols(); } catch { /* offline */ }
-  const rows = marketRows();
+  return marketRows();
+}
+
+async function moversReply(kind, st) {
+  const rows = await liveMarketRows();
   if (!rows.length) {
     return R(pick(st,
       'Live market data is not loaded yet. Press R to refresh prices, then ask again.',
@@ -495,7 +484,9 @@ async function moversReply(kind, st) {
     title = pick(st, '— Top gainers today —', '— අද වැඩිපුරම නැග්ග —', '— Top gainers (අද) —');
   }
   if (!list.length) {
-    return R(pick(st, 'No change data in the current feed.', 'Change data feed එකේ නැහැ.', 'Change data feed එකේ නැහැ.'));
+    return R(kind === 'active'
+      ? pick(st, 'No turnover data in the current feed.', 'Turnover data feed එකේ නැහැ.', 'Turnover data දැන් නැහැ.')
+      : pick(st, `No shares ${kind === 'losers' ? 'down' : 'up'} today in the current feed.`, `අද ${kind === 'losers' ? 'බැස්ස' : 'නැග්ග'} shares feed එකේ නැහැ.`, `අද ${kind === 'losers' ? 'losers' : 'gainers'} නැහැ.`));
   }
   const lines = [title];
   list.forEach((r, i) => {
@@ -620,7 +611,7 @@ function calcTradeReply(side, raw, sym, st) {
   }
   lines.push('');
   lines.push(pick(st, 'Commission % comes from your app setting.', 'Commission % app setting එකෙන්.', 'Commission % app setting එකෙන් ගන්නේ.'));
-  return R(lines.join('\n'), { actions: [tabAct('Open Calculator', 'calculator')] });
+  return R(lines.join('\n'), { actions: [tabAct('Open Calculator', 'calc')] });
 }
 
 function breakEvenReply(raw, sym, st) {
@@ -682,26 +673,38 @@ function yieldReply(raw, sym, st) {
     `Rs ${fmtNum(dps)} dividend / Rs ${fmtNum(price)} = **${fmtNum(y)}% yield**`)];
   if (qty) lines.push(pick(st, `On ${fmtNum(qty, 0)} shares: ${fmtRs(dps * qty)} (before withholding tax).`, `කොටස් ${fmtNum(qty, 0)} කට: ${fmtRs(dps * qty)} (tax කපන්න කලින්).`, `Shares ${fmtNum(qty, 0)}: ${fmtRs(dps * qty)} (tax කලින්).`));
   lines.push(pick(st, 'Past dividends don’t guarantee future ones.', 'කලින් dividend ආව කියලා ඉස්සරහට එනවා කියලා නැහැ.', 'Past dividends = guarantee නෙවෙයි.'));
-  return R(lines.join('\n'), { actions: [tabAct('Open Dividends', 'dividends')] });
+  return R(lines.join('\n'), { actions: [tabAct('Open Dividends', 'div')] });
 }
 
 /* =====================================================================
  * Portfolio
  * ===================================================================== */
 function portfolioStats() {
-  const c = A.commissionPct() / 100;
+  const rate = A.commissionPct();
   const rows = A.holdings().map((h) => {
     const price = A.price(h.symbol);
-    const cost = h.qty * h.avg;
-    const value = price != null ? h.qty * price : null;
-    const pl = value != null ? value - cost : null;
-    return { ...h, price, cost, value, pl, plPct: pl != null && cost ? (pl / cost) * 100 : null, chg: A.chg(h.symbol) };
+    // Same maths as the Portfolio tab (finance.js): P/L is after sell commission.
+    const r = computeRow({ ...h, tradedPrice: price ?? h.tradedPrice }, rate);
+    const has = (price ?? h.tradedPrice) > 0;
+    const chg = A.chg(h.symbol);
+    return {
+      ...h,
+      price: has ? (price ?? h.tradedPrice) : null,
+      cost: h.totalCost || h.qty * h.avg,
+      value: has ? r.marketValue : null,
+      pl: has ? r.gainLoss : null,
+      plPct: has ? r.gainLossPct : null,
+      status: has ? r.status : 'hold',
+      bes: h.besPrice || calcBes(h.avg, rate),
+      chg,
+    };
   });
   const priced = rows.filter((r) => r.value != null);
   const totalCost = priced.reduce((s, r) => s + r.cost, 0);
   const totalValue = priced.reduce((s, r) => s + r.value, 0);
-  const dayPl = priced.reduce((s, r) => (r.chg != null ? s + r.value - r.value / (1 + r.chg / 100) : s), 0);
-  return { rows, priced, totalCost, totalValue, pl: totalValue - totalCost, netIfSold: totalValue * (1 - c) - totalCost, dayPl, c };
+  const pl = priced.reduce((s, r) => s + r.pl, 0);
+  const dayPl = priced.reduce((s, r) => (r.chg != null && r.chg > -100 ? s + r.value - r.value / (1 + r.chg / 100) : s), 0);
+  return { rows, priced, totalCost, totalValue, pl, dayPl, rate };
 }
 
 function portfolioReply(st, focus) {
@@ -737,11 +740,13 @@ function portfolioReply(st, focus) {
   lines.push(pick(st, '— Your portfolio —', '— ඔයාගේ portfolio එක —', '— ඔයාගේ portfolio —'));
   lines.push(pick(st, `Value: ${fmtRs(s.totalValue)} · Cost: ${fmtRs(s.totalCost)}`, `වටිනාකම: ${fmtRs(s.totalValue)} · Cost: ${fmtRs(s.totalCost)}`, `Value ${fmtRs(s.totalValue)} · Cost ${fmtRs(s.totalCost)}`));
   lines.push(`${s.pl >= 0 ? '✅' : '🔻'} **P/L: ${fmtRs(s.pl)} (${fmtPct(s.totalCost ? (s.pl / s.totalCost) * 100 : 0)})**`);
-  if (s.dayPl) lines.push(pick(st, `Today: ${fmtRs(s.dayPl)}`, `අද: ${fmtRs(s.dayPl)}`, `අද වෙනස: ${fmtRs(s.dayPl)}`));
-  lines.push(pick(st,
-    `Net P/L if you sold everything now (after ${fmtNum(s.c * 100)}% sell commission): ${fmtRs(s.netIfSold)}`,
-    `දැන් ඔක්කොම විකුණුවොත් ශුද්ධ ලාභය/පාඩුව (commission ${fmtNum(s.c * 100)}% කපලා): ${fmtRs(s.netIfSold)}`,
-    `දැන් sell කළොත් net P/L (commission කපලා): ${fmtRs(s.netIfSold)}`));
+  lines.push(pick(st, `(after ${fmtNum(s.rate)}% sell commission — same as the Portfolio tab)`, `(විකුණුම් commission ${fmtNum(s.rate)}% කපලා — Portfolio tab එකේ වගේම)`, `(sell commission ${fmtNum(s.rate)}% කපලා — Portfolio tab එක වගේම)`));
+  if (s.dayPl) lines.push(pick(st, `Today’s move: ${fmtRs(s.dayPl)}`, `අද වෙනස: ${fmtRs(s.dayPl)}`, `අද වෙනස: ${fmtRs(s.dayPl)}`));
+  const sells = s.priced.filter((r) => r.status === 'sell');
+  const nears = s.priced.filter((r) => r.status === 'near');
+  if (sells.length || nears.length) {
+    lines.push(`🔔 SELL: ${sells.map((r) => shortSym(r.symbol)).join(', ') || '—'} · NEAR: ${nears.map((r) => shortSym(r.symbol)).join(', ') || '—'}`);
+  }
   lines.push('');
   for (const r of [...s.priced].sort((a, b) => b.value - a.value).slice(0, 8)) {
     lines.push(`**${shortSym(r.symbol)}** ${fmtNum(r.qty, 0)} · Rs ${fmtNum(r.price)} · ${fmtPct(r.plPct)} (${fmtRs(r.pl)})`);
@@ -772,16 +777,35 @@ function portfolioReply(st, focus) {
 function holdingLine(sym, st) {
   const h = A.holdings().find((x) => baseOf(x.symbol) === baseOf(sym));
   if (!h) return null;
-  const price = A.price(h.symbol) ?? A.price(sym);
-  if (price == null) return pick(st, `In your portfolio: ${fmtNum(h.qty, 0)} @ Rs ${fmtNum(h.avg)}`, `ඔයාගේ portfolio එකේ: ${fmtNum(h.qty, 0)} @ Rs ${fmtNum(h.avg)}`, `Portfolio එකේ: ${fmtNum(h.qty, 0)} @ Rs ${fmtNum(h.avg)}`);
-  const pl = h.qty * (price - h.avg);
-  const pct = h.avg ? ((price - h.avg) / h.avg) * 100 : 0;
-  const c = A.commissionPct() / 100;
-  const bes = (h.avg * (1 + c)) / (1 - c);
+  const rate = A.commissionPct();
+  const bes = h.besPrice || calcBes(h.avg, rate);
+  const price = A.price(h.symbol) ?? A.price(sym) ?? (h.tradedPrice || null);
+  if (price == null) return pick(st, `📁 In your portfolio: ${fmtNum(h.qty, 0)} @ Rs ${fmtNum(h.avg)} · B.E.S Rs ${fmtNum(bes)}`, `📁 ඔයාගේ portfolio එකේ: ${fmtNum(h.qty, 0)} @ Rs ${fmtNum(h.avg)} · B.E.S Rs ${fmtNum(bes)}`, `📁 Portfolio එකේ: ${fmtNum(h.qty, 0)} @ Rs ${fmtNum(h.avg)} · B.E.S Rs ${fmtNum(bes)}`);
+  const r = computeRow({ ...h, tradedPrice: price }, rate);
+  const sig = r.status === 'sell' ? ' · 🔔 SELL' : r.status === 'near' ? ' · 🔔 NEAR' : '';
   return pick(st,
-    `📁 You hold ${fmtNum(h.qty, 0)} @ avg Rs ${fmtNum(h.avg)} → P/L ${fmtRs(pl)} (${fmtPct(pct)}) · B.E.S Rs ${fmtNum(bes)}`,
-    `📁 ඔයා ළඟ ${fmtNum(h.qty, 0)} @ avg Rs ${fmtNum(h.avg)} → P/L ${fmtRs(pl)} (${fmtPct(pct)}) · B.E.S Rs ${fmtNum(bes)}`,
-    `📁 ඔයා ළඟ ${fmtNum(h.qty, 0)} @ Rs ${fmtNum(h.avg)} → P/L ${fmtRs(pl)} (${fmtPct(pct)}) · B.E.S Rs ${fmtNum(bes)}`);
+    `📁 You hold ${fmtNum(h.qty, 0)} @ avg Rs ${fmtNum(h.avg)} → P/L ${fmtRs(r.gainLoss)} (${fmtPct(r.gainLossPct)}) · B.E.S Rs ${fmtNum(bes)}${sig}`,
+    `📁 ඔයා ළඟ ${fmtNum(h.qty, 0)} @ avg Rs ${fmtNum(h.avg)} → P/L ${fmtRs(r.gainLoss)} (${fmtPct(r.gainLossPct)}) · B.E.S Rs ${fmtNum(bes)}${sig}`,
+    `📁 ඔයා ළඟ ${fmtNum(h.qty, 0)} @ Rs ${fmtNum(h.avg)} → P/L ${fmtRs(r.gainLoss)} (${fmtPct(r.gainLossPct)}) · B.E.S Rs ${fmtNum(bes)}${sig}`);
+}
+
+/** "Which of my shares are SELL / NEAR?" */
+function signalsReply(st) {
+  const s = portfolioStats();
+  if (!s.priced.length) return portfolioReply(st);
+  const pickRows = (k) => s.priced.filter((r) => r.status === k);
+  const fmtRow = (r) => `**${shortSym(r.symbol)}** Rs ${fmtNum(r.price)} vs B.E.S ${fmtNum(r.bes)} (${fmtPct(r.plPct)})`;
+  const sells = pickRows('sell');
+  const nears = pickRows('near');
+  const lines = [];
+  lines.push(pick(st, '— SELL (price ≥ B.E.S) —', '— SELL (මිල ≥ B.E.S) —', '— SELL (price ≥ B.E.S) —'));
+  lines.push(...(sells.length ? sells.map(fmtRow) : [pick(st, 'None', 'නැහැ', 'නැහැ')]));
+  lines.push(pick(st, '— NEAR (within 1% of B.E.S) —', '— NEAR (B.E.S එකට 1% ඇතුළත) —', '— NEAR (B.E.S ට 1% ඇතුළත) —'));
+  lines.push(...(nears.length ? nears.map(fmtRow) : [pick(st, 'None', 'නැහැ', 'නැහැ')]));
+  const wait = s.priced.filter((r) => r.status === 'hold').sort((a, b) => (b.price / b.bes) - (a.price / a.bes))[0];
+  if (wait) lines.push('', pick(st, `Closest of the rest: ${fmtRow(wait)}`, `ඉතුරු ඒවායින් ළඟම: ${fmtRow(wait)}`, `ඉතුරු වලින් ළඟම: ${fmtRow(wait)}`));
+  lines.push(pick(st, 'Signals = reminders to check, not advice.', 'Signals කියන්නේ check කරන්න මතක් කිරීම් — advice නෙවෙයි.', 'Signals = reminders, advice නෙවෙයි.'));
+  return R(lines.join('\n'), { chips: [...sells, ...nears].slice(0, 4).map((r) => chip(shortSym(r.symbol))), actions: [tabAct('Open Portfolio', 'portfolio')] });
 }
 
 /* =====================================================================
@@ -906,7 +930,7 @@ async function companyReply(hit, st) {
       chip(`buy 100 ${s}`),
       chip(pick(st, 'Dividend yield', 'Dividend yield', 'dividend yield'), `${s} dividend yield`),
     ],
-    actions: [tabAct('Fundamentals', 'fundamentals'), tabAct('Technical', 'technical'), { label: 'cse.lk', url: 'https://www.cse.lk/' }],
+    actions: [tabAct('Fundamentals', 'fund', d.sym), tabAct('Technical', 'tech', d.sym), { label: 'cse.lk', url: 'https://www.cse.lk/' }],
   });
 }
 
@@ -930,7 +954,7 @@ async function compareReply(symA, symB, st) {
     pick(st, 'For P/E, P/BV and EPS use the Fundamentals tab. ' + DISCLAIMER(st), 'P/E, P/BV, EPS සඳහා Fundamentals tab. ' + DISCLAIMER(st), 'P/E, P/BV → Fundamentals tab. ' + DISCLAIMER(st)),
   ];
   ctx.lastSymbol = a.sym;
-  return R(lines.join('\n'), { chips: [chip(A1), chip(B1)], actions: [tabAct('Fundamentals', 'fundamentals')] });
+  return R(lines.join('\n'), { chips: [chip(A1), chip(B1)], actions: [tabAct(`${A1} Fundamentals`, 'fund', a.sym), tabAct(`${B1} Fundamentals`, 'fund', b.sym)] });
 }
 
 /* =====================================================================
@@ -953,7 +977,7 @@ const GLOSSARY = [
   { re: /52.?w|52.?week/, en: '52-week range: lowest and highest price in the last year. Position shows where today’s price sits in that range.', si: '52-week range: පහුගිය අවුරුද්දේ අඩුම සහ වැඩිම මිල. Position එකෙන් අද මිල ඒ range එකේ කොහෙද කියලා පේනවා.' },
   { re: /rights? issue/, en: 'Rights issue: existing shareholders get the right to buy new shares, usually at a discount, in proportion to what they own.', si: 'Rights issue: දැනට ඉන්න shareholders ලට තියෙන කොටස් අනුපාතයට අලුත් කොටස් (සාමාන්‍යයෙන් අඩු මිලට) ගන්න අයිතිය.' },
   { re: /\bipo\b/, en: 'IPO: a company selling shares to the public for the first time.', si: 'IPO: company එකක් මුල්ම වතාවට public එකට කොටස් විකුණන එක.' },
-  { re: /(sell|near)\s*signal|signals?\b/, en: 'SELL / NEAR are the app’s rule-based hints on your holdings (see Guides for the exact rule). They are reminders to check — not advice.', si: 'SELL / NEAR කියන්නේ ඔයාගේ holdings වලට app එක දෙන rule-based hints (නිවැරදි rule එක Guides වල). Check කරන්න මතක් කිරීමක් විතරයි — advice නෙවෙයි.' },
+  { re: /(sell|near|wait)\s*signal|signals?\b|\bwait\b.*(mean|status)/, en: 'Portfolio signals: SELL = current price is at or above your B.E.S (selling now = no loss after commission). NEAR = within 1% below B.E.S. WAIT = below that. They are reminders to check — not advice. Ask “my SELL signals” to see yours.', si: 'Portfolio signals: SELL = දැන් මිල ඔයාගේ B.E.S එකට සමාන හෝ වැඩි (දැන් විකුණුවොත් commission එක්කත් පාඩු නැහැ). NEAR = B.E.S එකට 1%ක් ඇතුළත. WAIT = ඊට අඩු. මේවා check කරන්න මතක් කිරීම් — advice නෙවෙයි. “mage SELL signals” කියලා අහන්න.' },
 ];
 
 function glossaryMatch(q) {
@@ -986,7 +1010,7 @@ const FAQ = [
       'Calculator: BUY or SELL → qty + price. Uses commission % in the header. Shows total/net and break-even sell. Or just ask me: “buy 100 COMB @ 120”.',
       'Calculator: BUY/SELL තෝරලා qty + price දාන්න. Header commission use වෙනවා. නැත්නම් මට කියන්න: “buy 100 COMB @ 120”.',
       'Calculator tab → BUY/SELL → qty + price. නැත්නම් මෙතනම type කරන්න: “COMB 100 120ට ගත්තා”.'),
-    { chips: [chip('buy 100 COMB @ 120'), chip('break even 120')], actions: [tabAct('Open Calculator', 'calculator')] }),
+    { chips: [chip('buy 100 COMB @ 120'), chip('break even 120')], actions: [tabAct('Open Calculator', 'calc')] }),
   },
   {
     re: /how.*(add|track).*(share|portfolio)|portfolio.*(how|kohomada|කොහොමද)|add share/,
@@ -1002,7 +1026,7 @@ const FAQ = [
       'Dividends tab: seasonality hints, log events, estimates. Confirm official XD dates on the CSE — patterns are history only.',
       'Dividends tab එකේ patterns + log. Official XD CSE එකෙන් confirm කරන්න.',
       'Dividends tab බලන්න. Official announcement CSE එකෙන් check කරන්න.'),
-    { chips: [chip('What is XD?'), chip('dividend 5 price 100')], actions: [tabAct('Open Dividends', 'dividends')] }),
+    { chips: [chip('What is XD?'), chip('dividend 5 price 100')], actions: [tabAct('Open Dividends', 'div')] }),
   },
   {
     re: /\bnews\b|පුවත්/,
@@ -1204,6 +1228,10 @@ async function respond(query) {
   }
 
   // 4) Portfolio
+  if (!hasNum && !/what is|mokakda|mokadda|meaning|kiyanne|තේරුම|මොකද/.test(q) &&
+      /\bsignals?\b|\b(sell|near)\s*(list|eka|ewa|shares?|alerts?)\b|which .*\b(sell|near)\b|sell karanna puluwan|\balerts?\b/i.test(q)) {
+    return signalsReply(st);
+  }
   if (RX.best.test(q) && /portfolio|holding|mage|my|මගේ|share/.test(q)) return portfolioReply(st, 'best');
   if (RX.worst.test(q) && /portfolio|holding|mage|my|මගේ|share/.test(q)) return portfolioReply(st, 'worst');
   if (RX.portfolio.test(raw) && !sym && !/how to|add share|කොහොමද add/.test(q)) return portfolioReply(st);
@@ -1219,7 +1247,7 @@ async function respond(query) {
   if (RX.open.test(q) && raw.split(/\s+/).length <= 6) {
     const t = TABS.find((x) => x.re.test(q));
     if (t) {
-      return { navigate: t.id, ...R(pick(st, `Opening ${t.label} ↗`, `${t.label} open කරනවා ↗`, `${t.label} open කළා ↗`)) };
+      return { navigate: t.id, navSym: (t.id === 'fund' || t.id === 'tech') ? ctx.lastSymbol : null, ...R(pick(st, `Opening ${t.label} ↗`, `${t.label} open කරනවා ↗`, `${t.label} open කළා ↗`)) };
     }
   }
 
@@ -1238,6 +1266,12 @@ async function respond(query) {
       if (/\b(price|mila)\b|මිල|\b52w\b/.test(q) && raw.split(/\s+/).length <= 4) return quickPriceReply(hit.symbol, st);
       return companyReply(hit, st);
     }
+  }
+
+  // 8b) A lone ticker that isn't in today's trade list (e.g. not traded today)
+  if (!sym && /^[A-Za-z]{2,8}(\.[A-Za-z]\d{4})?$/.test(raw) && !NOT_SYMBOL.has(q) && !TABS.some((t) => t.re.test(q)) && !glossaryMatch(q)) {
+    const hit = await resolveBySymbol(raw);
+    if (hit) return companyReply(hit, st);
   }
 
   // 9) App FAQ
@@ -1317,10 +1351,10 @@ function renderRich(node, text) {
 const plain = (t) => String(t).replace(/\*\*/g, '');
 
 function store(key, val) {
-  try { localStorage.setItem(key, JSON.stringify(val)); } catch { /* private mode */ }
+  try { sessionStorage.setItem(key, JSON.stringify(val)); } catch { /* private mode */ }
 }
 function load(key, def) {
-  try { const v = JSON.parse(localStorage.getItem(key) || 'null'); return v ?? def; } catch { return def; }
+  try { const v = JSON.parse(sessionStorage.getItem(key) || 'null'); return v ?? def; } catch { return def; }
 }
 
 export function initChatbot() {
@@ -1447,7 +1481,7 @@ export function initChatbot() {
             const b = el('button', 'cse-chat-act', a.label + ' →');
             b.type = 'button';
             b.addEventListener('click', () => {
-              openTab(a.tab);
+              openTab(a.tab, a.sym);
               if (window.innerWidth < 640) close();
             });
             row.appendChild(b);
@@ -1562,7 +1596,7 @@ export function initChatbot() {
       ctx.turns.push({ role: 'user', content: q }, { role: 'assistant', content: plain(res.text) });
       ctx.turns = ctx.turns.slice(-10);
       if (res.navigate) {
-        openTab(res.navigate);
+        openTab(res.navigate, res.navSym);
         if (window.innerWidth < 640) close();
       }
     } catch (err) {
