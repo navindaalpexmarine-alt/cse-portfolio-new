@@ -419,7 +419,7 @@ async function marketHoursReply(st) {
     const d = await cseCached('marketStatus', {});
     official = String(d?.status || '').trim();
   } catch { /* offline */ }
-  if (/open/i.test(official) && !s.open) { s.open = true; s.left = Math.max(0, CONFIG.closeMin - colomboClock().mins); }
+  if (/open|regular|trading|continuous/i.test(official) && !/clos/i.test(official) && !s.open) { s.open = true; s.left = Math.max(0, CONFIG.closeMin - colomboClock().mins); }
   if (/clos/i.test(official) && s.open) { s.open = false; s.until = null; }
   let en, si;
   if (s.open) {
@@ -1359,7 +1359,7 @@ async function briefReply(st) {
 
   const ms = marketStatus();
   const official = statusR.status === 'fulfilled' ? String(statusR.value?.status || '') : '';
-  const open = official ? /open/i.test(official) : ms.open;
+  const open = /clos/i.test(official) ? false : /open|regular|trading|continuous/i.test(official) ? true : ms.open;
   let mk = open ? pick(st, '🟢 Market open', '🟢 Market open', '🟢 Market open') : pick(st, '🔴 Market closed', '🔴 Market වහලා', '🔴 Market closed');
   const a = aspiR.status === 'fulfilled' ? aspiR.value : null;
   const av = num(a?.value);
@@ -1728,9 +1728,16 @@ async function askAI(query, st) {
       signal: ctl?.signal,
     });
     const type = res.headers.get('content-type') || '';
-    if (!type.includes('json')) { aiState = 'off'; return null; }
+    if (!type.includes('json')) { aiState = 'off'; console.warn('[chatbot] AI endpoint missing (api/chat)'); return null; }
     const data = await res.json().catch(() => ({}));
-    if (res.status === 503 || res.status === 404) { aiState = 'off'; return null; }
+    if (res.status === 503 || res.status === 404) { aiState = 'off'; console.warn('[chatbot] AI not configured on the server'); return null; }
+    if (!res.ok && res.status !== 429) {
+      console.warn('[chatbot] AI error', res.status, data);
+      return R(pick(st,
+        'The AI couldn’t answer right now — please try again in a minute. App, portfolio and company questions still work.',
+        'AI එකට දැන් උත්තර දෙන්න බැරි වුණා — විනාඩියකින් ආයෙ try කරන්න. App, portfolio, company ප්‍රශ්න නම් තාමත් වැඩ.',
+        'AI එකට දැන් බැරි වුණා — විනාඩියකින් try කරන්න. Portfolio / company ප්‍රශ්න නම් වැඩ.'), { chips: starterChips(st) });
+    }
     if (res.status === 429) {
       return R(pick(st,
         'The free AI limit is reached for now — please try again later. I can still answer app, portfolio and company questions.',
@@ -1953,10 +1960,13 @@ async function respond(query) {
   const ai = await askAI(raw, st);
   if (ai) return ai;
 
+  const aiNote = aiState === 'off' && raw.split(/\s+/).length > 3
+    ? pick(st, ' (AI answers are not switched on for this site yet.)', ' (මේ site එකේ AI උත්තර තවම on කරලා නැහැ.)', ' (AI තවම on කරලා නැහැ.)')
+    : '';
   return R(pick(st,
     'Sorry, I didn’t get that. Try one of these:',
     'සමාවෙන්න, තේරුණේ නැහැ. මේවා try කරන්න:',
-    'Sorry, තේරුණේ නැහැ. මේ වගේ අහන්න:'), { chips: starterChips(st) });
+    'Sorry, තේරුණේ නැහැ. මේ වගේ අහන්න:') + aiNote, { chips: starterChips(st) });
 }
 
 /* =====================================================================
