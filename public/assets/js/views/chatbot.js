@@ -1357,6 +1357,50 @@ function load(key, def) {
   try { const v = JSON.parse(sessionStorage.getItem(key) || 'null'); return v ?? def; } catch { return def; }
 }
 
+/** 3D-style robot face (inline SVG). `k` keeps gradient ids unique per copy. */
+function robotSvg(k = 'a', cls = 'cse-bot') {
+  return `<svg class="${cls}" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+  <defs>
+    <radialGradient id="rb-head-${k}" cx="38%" cy="30%" r="75%">
+      <stop offset="0" stop-color="#ffffff"/><stop offset=".55" stop-color="#e3e8f0"/><stop offset="1" stop-color="#9aa4b5"/>
+    </radialGradient>
+    <linearGradient id="rb-gold-${k}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff1b8"/><stop offset=".45" stop-color="#e7bf45"/><stop offset="1" stop-color="#8a6a12"/>
+    </linearGradient>
+    <linearGradient id="rb-visor-${k}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a3647"/><stop offset="1" stop-color="#0a0e14"/>
+    </linearGradient>
+    <radialGradient id="rb-eye-${k}" cx="50%" cy="40%" r="60%">
+      <stop offset="0" stop-color="#fffbe0"/><stop offset=".5" stop-color="#ffd24a"/><stop offset="1" stop-color="#ff9f1a"/>
+    </radialGradient>
+    <filter id="rb-glow-${k}" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="1.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <ellipse class="rb-shadow" cx="32" cy="59" rx="15" ry="2.6" fill="#000" opacity=".28"/>
+  <g class="rb-body">
+    <g class="rb-antenna">
+      <rect x="30.8" y="6.5" width="2.4" height="8" rx="1.2" fill="url(#rb-gold-${k})"/>
+      <circle class="rb-bulb" cx="32" cy="6" r="3.3" fill="url(#rb-eye-${k})" filter="url(#rb-glow-${k})"/>
+    </g>
+    <rect x="7.5" y="25" width="7" height="15" rx="3.5" fill="url(#rb-gold-${k})"/>
+    <rect x="49.5" y="25" width="7" height="15" rx="3.5" fill="url(#rb-gold-${k})"/>
+    <rect x="12" y="13" width="40" height="38" rx="14" fill="url(#rb-head-${k})"/>
+    <rect x="12" y="13" width="40" height="38" rx="14" fill="none" stroke="#7d8798" stroke-opacity=".35"/>
+    <ellipse cx="22" cy="18.5" rx="7" ry="3" fill="#fff" opacity=".75"/>
+    <rect x="16.5" y="22" width="31" height="19" rx="9" fill="url(#rb-visor-${k})"/>
+    <path d="M20 25.5c3-2.4 9-3 14-2.6" stroke="#fff" stroke-opacity=".28" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+    <g class="rb-eyes" filter="url(#rb-glow-${k})">
+      <ellipse cx="25.5" cy="31" rx="3.3" ry="4" fill="url(#rb-eye-${k})"/>
+      <ellipse cx="38.5" cy="31" rx="3.3" ry="4" fill="url(#rb-eye-${k})"/>
+    </g>
+    <path d="M28.5 37.2q3.5 2.4 7 0" stroke="#ffd24a" stroke-width="1.4" fill="none" stroke-linecap="round" opacity=".85"/>
+    <circle cx="18.5" cy="44" r="2.4" fill="#ff8fa3" opacity=".45"/>
+    <circle cx="45.5" cy="44" r="2.4" fill="#ff8fa3" opacity=".45"/>
+  </g>
+</svg>`;
+}
+
 export function initChatbot() {
   if ($('#cseChatRoot')) return;
 
@@ -1375,7 +1419,9 @@ export function initChatbot() {
   title.appendChild(sub);
   const status = el('span', 'cse-chat-status');
   title.appendChild(status);
-  head.appendChild(title);
+  const avatar = el('span', 'cse-chat-avatar');
+  avatar.innerHTML = robotSvg('head', 'cse-bot-mini');
+  head.append(avatar, title);
 
   const headBtns = el('div', 'cse-chat-headbtns');
   const clearBtn = el('button', 'cse-chat-iconbtn', '🗑');
@@ -1420,11 +1466,12 @@ export function initChatbot() {
 
   panel.append(head, msgs, chips, form);
 
-  const fab = el('button', 'cse-chat-fab', '💬');
+  const fab = el('button', 'cse-chat-fab');
+  fab.innerHTML = robotSvg('fab'); // static markup, no user data
   fab.type = 'button';
   fab.setAttribute('aria-label', 'Open help chat');
   fab.setAttribute('aria-expanded', 'false');
-  fab.title = 'Help';
+  fab.title = 'CSE Assistant';
 
   root.append(panel, fab);
   document.body.appendChild(root);
