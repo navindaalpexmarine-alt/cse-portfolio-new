@@ -26,6 +26,7 @@ import history from './views/history.js';
 import news from './views/news.js';
 import fundamentals from './views/fundamentals.js';
 import technical from './views/technical.js';
+import insights, { startReminders } from './views/insights.js';
 
 /* ---------- views ---------- */
 register('portfolio', portfolio);
@@ -36,6 +37,7 @@ register('history', history);
 register('news', news);
 register('fund', fundamentals);
 register('tech', technical);
+register('insights', insights);
 
 /* ---------- theme ---------- */
 function setTheme(theme) {
@@ -69,7 +71,7 @@ function onKey(e) {
     return;
   }
   const ids = viewIds();
-  if (/^[1-8]$/.test(e.key)) { go(ids[Number(e.key) - 1]); e.preventDefault(); return; }
+  if (/^[1-9]$/.test(e.key) && ids[Number(e.key) - 1]) { go(ids[Number(e.key) - 1]); e.preventDefault(); return; }
   switch (e.key) {
     case 'r': case 'R': refreshPrices(); break;
     case 't': case 'T': toggleTheme(); break;
@@ -191,6 +193,7 @@ function boot(user) {
   document.addEventListener('keydown', onKey);
   initSettings();
   initChatbot();
+  startReminders(); // XD reminders for your shares (Insights → Alerts)
 
   // Another tab saved changes -> reload so tabs never overwrite each other.
   // Another tab signed out / switched account -> restart this one too.
