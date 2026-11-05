@@ -6,8 +6,11 @@
   "cleanUrls": true,
   "regions": ["sin1"],
   "functions": {
-    "api/*.js": { "maxDuration": 20 }
+    "api/*.js": { "maxDuration": 60 }
   },
+  "crons": [
+    { "path": "/api/digest?action=run", "schedule": "0 10 * * 1-5" }
+  ],
   "headers": [
     {
       "source": "/(.*)",
