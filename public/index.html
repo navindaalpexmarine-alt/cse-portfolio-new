@@ -47,6 +47,7 @@
     <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 13A9 9 0 1 1 11 3a7 7 0 0 0 10 10z"/></symbol>
     <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></symbol>
     <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+    <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1.1 2V16h5v-.2c.1-.8.5-1.5 1.1-2A6 6 0 0 0 12 3z"/></symbol>
     <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
   </defs>
 </svg>
@@ -166,6 +167,7 @@
       <button class="tab" role="tab" id="tab-news" data-view="news" aria-controls="view-news" type="button"><svg class="ico" aria-hidden="true"><use href="#i-news"/></svg>News</button>
       <button class="tab" role="tab" id="tab-fund" data-view="fund" aria-controls="view-fund" type="button"><svg class="ico" aria-hidden="true"><use href="#i-book"/></svg>Fundamentals</button>
       <button class="tab" role="tab" id="tab-tech" data-view="tech" aria-controls="view-tech" type="button"><svg class="ico" aria-hidden="true"><use href="#i-candle"/></svg>Technical</button>
+      <button class="tab" role="tab" id="tab-insights" data-view="insights" aria-controls="view-insights" type="button"><svg class="ico" aria-hidden="true"><use href="#i-bulb"/></svg>Insights</button>
     </div>
   </div>
 </nav>
@@ -601,6 +603,17 @@
     </div>
     <div id="techContent"><div class="empty">Select a symbol and click <strong>Load</strong> — TradingView + CSE metrics.</div></div>
   </section>
+
+  <!-- ========== INSIGHTS ========== -->
+  <section class="view" id="view-insights" role="tabpanel" aria-labelledby="tab-insights" hidden>
+    <div class="tip"><b>Insights</b> — planning tools for your own portfolio: goals, health check, ASPI comparison, FD vs shares, dividend snowball, alerts, market heatmap and calculators. Estimates for planning only — not investment advice.</div>
+    <nav class="ins-jump" aria-label="Jump to an insight">
+      <a href="#insGoal">🎯 Goal</a><a href="#insHealth">🩺 Health</a><a href="#insAspi">🆚 vs ASPI</a><a href="#insFd">🏦 FD vs shares</a>
+      <a href="#insSnow">❄️ Snowball</a><a href="#insAlerts">🔔 Alerts</a><a href="#insHeat">🗺️ Heatmap</a><a href="#insWhatIf">🔁 What if</a>
+      <a href="#insRights">🧮 Rights</a><a href="#insShare">📤 Share</a>
+    </nav>
+    <div class="ins-grid" id="insightsRoot"><div class="empty">Loading insights…</div></div>
+  </section>
 </main>
 
 <footer class="app-footer">
@@ -692,7 +705,7 @@
       <button class="icon-btn" value="close" aria-label="Close"><svg class="ico" aria-hidden="true"><use href="#i-x"/></svg></button>
     </div>
     <dl class="kbd-list">
-      <dt><kbd>1</kbd> – <kbd>8</kbd></dt><dd>Switch section</dd>
+      <dt><kbd>1</kbd> – <kbd>9</kbd></dt><dd>Switch section</dd>
       <dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>Move between tabs (when a tab is focused)</dd>
       <dt><kbd>R</kbd></dt><dd>Update prices</dd>
       <dt><kbd>/</kbd></dt><dd>Focus search in the current section</dd>

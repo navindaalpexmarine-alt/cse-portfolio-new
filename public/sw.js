@@ -10,7 +10,7 @@
  *
  * Bump VERSION when the precache list changes.
  */
-const VERSION = 'v3.3.0';
+const VERSION = 'v3.4.0';
 const CACHE = `cse-portfolio-${VERSION}`;
 
 const SHELL = [
@@ -24,7 +24,9 @@ const SHELL = [
   'assets/js/main.js',
   'assets/js/core/account.js',
   'assets/js/core/api.js',
+  'assets/js/core/dates.js',
   'assets/js/core/finance.js',
+  'assets/js/core/insights-math.js',
   'assets/js/core/indicators.js',
   'assets/js/core/loader.js',
   'assets/js/core/prices.js',
@@ -42,6 +44,7 @@ const SHELL = [
   'assets/js/views/dividends.js',
   'assets/js/views/fundamentals.js',
   'assets/js/views/history.js',
+  'assets/js/views/insights.js',
   'assets/js/views/market.js',
   'assets/js/views/news.js',
   'assets/js/views/portfolio.js',
