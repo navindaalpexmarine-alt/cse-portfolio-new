@@ -38,6 +38,9 @@ async function call(method, path, body) {
 
 const auth = (action, body) => call('POST', `api/auth?action=${action}`, body);
 
+/** Sends the signed-in user one daily-summary e-mail now. */
+export const sendTestDigest = () => call('POST', 'api/digest?action=test', {});
+
 export const me = () => call('GET', 'api/auth?action=me');
 export const register = (email, password, name) => auth('register', { email, password, name });
 export const login = (email, password) => auth('login', { email, password });
