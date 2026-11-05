@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Users · CSE Portfolio</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0B0F14">
+<meta name="color-scheme" content="dark light">
+<link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="assets/css/styles.css">
+<link rel="stylesheet" href="assets/css/legal.css">
+<script src="assets/js/theme-init.js"></script>
+</head>
+<body class="legal-page">
+<header class="legal-header">
+  <div class="wrap legal-header-inner">
+    <a class="brand" href="./">
+      <img src="assets/icons/icon-192.png" width="36" height="36" alt="" class="brand-icon">
+      <span>
+        <span class="brand-title">CSE Portfolio</span>
+        <span class="brand-sub">Users (owner only)</span>
+      </span>
+    </a>
+    <nav class="legal-nav" aria-label="Pages">
+      <a href="./">Back to app</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main" class="wrap" style="padding-top:20px;padding-bottom:40px">
+  <div class="row-inline wrap-gap" style="justify-content:space-between">
+    <h1 style="margin:0;font-size:24px">Accounts</h1>
+    <div class="row-inline wrap-gap" style="margin:0">
+      <input type="search" id="adminSearch" class="search" placeholder="Search name or email…" aria-label="Search accounts" style="padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font:inherit;min-width:220px">
+      <button class="btn" type="button" id="adminRefresh">↻ Refresh</button>
+    </div>
+  </div>
+  <p class="hint" id="adminStatus" role="status">Loading…</p>
+
+  <div class="summary" id="adminSummary" style="margin-top:14px"></div>
+
+  <div class="panel" style="padding:0;overflow:hidden">
+    <div class="table-wrap" style="overflow-x:auto">
+      <table class="data-table" style="width:100%">
+        <thead><tr>
+          <th scope="col" style="text-align:left">Name</th>
+          <th scope="col" style="text-align:left">Email</th>
+          <th scope="col" style="text-align:left">Signed up</th>
+          <th scope="col" style="text-align:left">Last active</th>
+          <th scope="col">Daily email</th>
+        </tr></thead>
+        <tbody id="adminRows"></tbody>
+      </table>
+    </div>
+  </div>
+  <p class="hint" style="margin-top:12px">"Last active" updates when someone opens the app while signed in, signs in, or saves changes.
+    "Active now" means active in the last 15 minutes. Passwords and portfolios are never shown here.</p>
+</main>
+<script type="module" src="assets/js/admin.js"></script>
+</body>
+</html>

@@ -10,7 +10,7 @@
  *
  * Bump VERSION when the precache list changes.
  */
-const VERSION = 'v3.5.1';
+const VERSION = 'v3.5.2';
 const CACHE = `cse-portfolio-${VERSION}`;
 
 const SHELL = [
