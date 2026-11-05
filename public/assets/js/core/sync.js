@@ -148,7 +148,7 @@ export function flush() {
 /* ---------- session start ---------- */
 
 function rememberUser(u) {
-  user = { id: u.id, email: u.email, name: u.name || '' };
+  user = { id: u.id, email: u.email, name: u.name || '', ...(u.admin ? { admin: true } : {}) };
   writeRaw(ACCOUNT_KEYS.account, JSON.stringify(user));
   setAfterSave(schedule);
 }
