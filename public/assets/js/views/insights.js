@@ -14,6 +14,7 @@ import { go } from '../core/router.js';
 import { parseDate } from '../core/dates.js';
 import { $, cssVar, esc, fmt, fmtInt } from '../core/utils.js';
 import { emptyHtml, toast } from '../core/ui.js';
+import { drawQr } from '../core/qr.js';
 import { compareWithAspi, healthScore, monthsUntil, projectValue, requiredMonthly, rightsIssue, snowball, whatIf } from '../core/insights-math.js';
 
 const ALERT_KEY = 'cseChat.alerts.v1'; // shared with the chatbot, which fires them on price refresh
@@ -516,9 +517,25 @@ function renderRights() {
 }
 
 /* =====================================================================
- * 📤 Share card (canvas)
+ * 📤 Share card (canvas) — with a QR code that opens the site
  * ===================================================================== */
-function drawShareCard(showAmounts) {
+const SHARE_URL = () => (location.protocol === 'https:' ? `${location.origin}/` : 'https://cse-portfolio-new.vercel.app/');
+
+// Site logo for the share card — loaded once, cached; the card still draws if it fails.
+let logoPromise = null;
+function loadLogo() {
+  if (!logoPromise) {
+    logoPromise = new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => resolve(null);
+      img.src = new URL('../../icons/icon-192.png', import.meta.url).href;
+    });
+  }
+  return logoPromise;
+}
+
+function drawShareCard(showAmounts, logo = null) {
   const rows = portfolioRows().filter((r) => r.price);
   const t = totals(rows);
   const best = [...rows].filter((r) => r.plPct != null).sort((a, b) => b.plPct - a.plPct)[0];
@@ -529,38 +546,61 @@ function drawShareCard(showAmounts) {
   grad.addColorStop(0, '#0B0F14'); grad.addColorStop(1, '#1d2633');
   g.fillStyle = grad; g.fillRect(0, 0, 1080, 1080);
   g.strokeStyle = '#D4AF37'; g.lineWidth = 6; g.strokeRect(40, 40, 1000, 1000);
-  g.fillStyle = '#D4AF37'; g.font = '700 54px Georgia, serif'; g.fillText('CSE Portfolio', 90, 160);
+  // Logo + title (header)
+  const tx = logo ? 210 : 90;
+  if (logo) {
+    g.save();
+    g.beginPath(); g.roundRect ? g.roundRect(90, 96, 100, 100, 22) : g.rect(90, 96, 100, 100); g.clip();
+    g.drawImage(logo, 90, 96, 100, 100);
+    g.restore();
+  }
+  g.fillStyle = '#D4AF37'; g.font = '700 54px Georgia, serif'; g.fillText('CSE Portfolio', tx, 150);
   g.fillStyle = '#8B95A8'; g.font = '500 32px Inter, system-ui, sans-serif';
-  g.fillText(new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }), 90, 215);
+  g.fillText(new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }), tx, 196);
+  const W = 640; // text column; the QR code sits bottom-right
+  const W2 = 570; // narrower next to the QR code
   const line = (label, value, color, y, size = 92) => {
-    g.fillStyle = '#8B95A8'; g.font = '600 30px Inter, system-ui, sans-serif'; g.fillText(label.toUpperCase(), 90, y);
-    g.fillStyle = color; g.font = `700 ${size}px Inter, system-ui, sans-serif`; g.fillText(value, 90, y + size + 6);
+    g.fillStyle = '#8B95A8'; g.font = '600 30px Inter, system-ui, sans-serif'; g.fillText(label.toUpperCase(), 90, y, W);
+    g.fillStyle = color; g.font = `700 ${size}px Inter, system-ui, sans-serif`; g.fillText(value, 90, y + size + 6, W);
   };
   const col = (n) => (n >= 0 ? '#2ECC9A' : '#E85D5D');
   line('Total return', pct(t.plPct), col(t.plPct), 330, 130);
   line('Today', pct(t.dayPct), col(t.dayPct), 560);
-  if (best) line(`Best share · ${baseSym(best.symbol)}`, pct(best.plPct), col(best.plPct), 760, 76);
-  if (showAmounts) { g.fillStyle = '#EEF1F6'; g.font = '600 34px Inter, system-ui, sans-serif'; g.fillText(`Value ${rs(t.value)} · P/L ${rs(t.pl)}`, 90, 940); }
-  g.fillStyle = '#5c6474'; g.font = '500 28px Inter, system-ui, sans-serif';
-  g.fillText(`${rows.length} shares · cse-portfolio-new.vercel.app · not investment advice`, 90, 1000);
+  if (best) { g.fillStyle = '#8B95A8'; g.font = '600 30px Inter, system-ui, sans-serif'; g.fillText(`BEST SHARE · ${baseSym(best.symbol)}`, 90, 760, W2);
+    g.fillStyle = col(best.plPct); g.font = '700 76px Inter, system-ui, sans-serif'; g.fillText(pct(best.plPct), 90, 842, W2); }
+  if (showAmounts) { g.fillStyle = '#EEF1F6'; g.font = '600 32px Inter, system-ui, sans-serif'; g.fillText(`Value ${rs(t.value)} · P/L ${rs(t.pl)}`, 90, 915, W2); }
+  const url = SHARE_URL();
+  g.fillStyle = '#D4AF37'; g.font = '600 30px Inter, system-ui, sans-serif';
+  g.fillText(url.replace(/^https?:\/\//, '').replace(/\/$/, ''), 90, 965, W2);
+  g.fillStyle = '#5c6474'; g.font = '500 24px Inter, system-ui, sans-serif';
+  g.fillText(`${rows.length} shares · not investment advice`, 90, 1005, W2);
+  // QR code (bottom-right) — scan to open the site
+  const qx = 696, qy = 620, qs = 296; // 37 modules × 8 px for a short link
+  g.fillStyle = '#FFFFFF';
+  g.beginPath(); g.roundRect ? g.roundRect(qx - 12, qy - 12, qs + 24, qs + 24, 18) : g.rect(qx - 12, qy - 12, qs + 24, qs + 24); g.fill();
+  try { drawQr(g, url, qx, qy, qs); } catch { /* text too long — skip the code */ }
+  g.fillStyle = '#EEF1F6'; g.font = '600 26px Inter, system-ui, sans-serif'; g.textAlign = 'center';
+  g.fillText('Scan to open', qx + qs / 2, qy + qs + 52);
+  g.textAlign = 'left';
   return cv;
 }
 
-function renderShare() {
+async function renderShare() {
   const out = $('#shareOut');
   if (!out) return;
   if (!portfolioRows().some((r) => r.price)) { out.innerHTML = emptyHtml('Add shares with live prices to make a share card.', true); return; }
-  const cv = drawShareCard(!!$('#shareAmounts')?.checked);
+  const logo = await loadLogo();
+  const cv = drawShareCard(!!$('#shareAmounts')?.checked, logo);
   out.innerHTML = `<img class="share-preview" alt="Portfolio share card preview" src="${cv.toDataURL('image/png')}">`;
 }
 
 async function shareNow() {
-  const cv = drawShareCard(!!$('#shareAmounts')?.checked);
+  const cv = drawShareCard(!!$('#shareAmounts')?.checked, await loadLogo());
   const blob = await new Promise((r) => cv.toBlob(r, 'image/png'));
   const file = new File([blob], 'cse-portfolio.png', { type: 'image/png' });
   try {
     if (navigator.canShare?.({ files: [file] })) {
-      await navigator.share({ files: [file], title: 'My CSE portfolio', text: 'Tracked with CSE Portfolio' });
+      await navigator.share({ files: [file], title: 'My CSE portfolio', text: `Tracked with CSE Portfolio — ${SHARE_URL()}` });
       return;
     }
   } catch (err) { if (err?.name === 'AbortError') return; }
