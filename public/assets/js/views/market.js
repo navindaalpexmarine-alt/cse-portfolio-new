@@ -3,6 +3,7 @@
  * One request to the proxy's virtual `marketOverview` endpoint.
  */
 import { cse } from '../core/api.js';
+import { state } from '../core/store.js';
 import { $, esc, fmt, fmtCompact, fmtInt } from '../core/utils.js';
 
 function indexTick(label, d) {
@@ -21,6 +22,8 @@ export async function loadMarketOverview() {
   try {
     const d = await cse('marketOverview');
     const status = d.marketStatus?.status;
+    const aspiV = Number(d.aspiData?.value);
+    if (aspiV > 0) state.aspi = { value: aspiV, pct: Number(d.aspiData?.percentage) || 0, at: Date.now() }; // used by daily snapshots + Insights
     const sum = d.marketSummery || {};
     const open = /trading|open/i.test(status || '') && !/close/i.test(status || '');
     el.innerHTML = [
