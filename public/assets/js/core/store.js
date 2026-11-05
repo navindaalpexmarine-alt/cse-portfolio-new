@@ -34,6 +34,12 @@ export const DEFAULT_SETTINGS = Object.freeze({
   refreshSec: 120,      // auto price refresh interval; 0 = off
   marketHoursOnly: true,
   notify: false,
+  // Insights tab (synced with the account like the other settings)
+  goalAmount: 0,        // target portfolio value (Rs)
+  goalDate: '',         // YYYY-MM-DD
+  goalReturn: 10,       // assumed yearly return % for planning
+  fdRate: 0,            // fixed-deposit rate % to compare with
+  xdRemind: true,       // remind before XD dates of your shares
 });
 
 /** Single source of truth. Persisted fields + runtime-only caches. */
@@ -50,6 +56,7 @@ export const state = {
   priceMap: {},     // SYMBOL -> { price, change, changePct, name, id }
   market: [],       // full CSE list [{symbol, name, id, price}]
   newsCache: [],
+  aspi: null,       // { value, pct, at } latest ASPI from the header ticker
   live: 'unknown',  // 'ok' | 'down' | 'unknown'
 };
 
@@ -99,7 +106,7 @@ const sanitizeTx = (t = {}) => ({
 const sanitizeWatch = (list) => [...new Set(arr(list)
   .map((x) => String(x || '').trim().toUpperCase().replace(/[^A-Z0-9.]/g, '').slice(0, 24))
   .filter(Boolean))].slice(0, 100);
-const sanitizeSnap = (s = {}) => ({ day: String(s.day || '').slice(0, 10), mv: Number(s.mv) || 0, cost: Number(s.cost) || 0, ts: Number(s.ts) || 0 });
+const sanitizeSnap = (s = {}) => ({ day: String(s.day || '').slice(0, 10), mv: Number(s.mv) || 0, cost: Number(s.cost) || 0, aspi: Number(s.aspi) || 0, ts: Number(s.ts) || 0 });
 
 function applyData(d) {
   state.holdings = arr(d.holdings).map(sanitizeHolding);

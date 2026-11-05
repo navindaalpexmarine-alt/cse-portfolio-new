@@ -41,9 +41,10 @@ function recordValueSnapshot() {
   let mv = 0, cost = 0;
   state.holdings.forEach((h) => { mv += computeRow(h, state.commissionRate).marketValue; cost += h.totalCost || 0; });
   const day = new Date().toISOString().slice(0, 10);
+  const aspi = state.aspi && Date.now() - state.aspi.at < 6 * 3600000 ? state.aspi.value : 0; // ASPI for Insights → Portfolio vs ASPI
   const last = state.valueSnaps[state.valueSnaps.length - 1];
-  if (last && last.day === day) Object.assign(last, { mv, cost, ts: Date.now() });
-  else state.valueSnaps.push({ day, mv, cost, ts: Date.now() });
+  if (last && last.day === day) Object.assign(last, { mv, cost, ts: Date.now() }, aspi ? { aspi } : {});
+  else state.valueSnaps.push({ day, mv, cost, aspi, ts: Date.now() });
   if (state.valueSnaps.length > 365) state.valueSnaps = state.valueSnaps.slice(-365);
 }
 
@@ -77,12 +78,13 @@ export async function refreshPrices({ silent = false } = {}) {
   const btn = $('#refreshBtn');
   setBusy(btn, true);
   setPriceStatus('Loading…', 'load');
-  loadMarketOverview(); // header ticker, in parallel
+  const overview = loadMarketOverview(); // header ticker, in parallel
   try {
     const data = await cse('tradeSummary');
     const list = data.reqTradeSummery || data || [];
     if (!Array.isArray(list) || !list.length) throw new Error('Empty price list');
     const n = applyPrices(list);
+    await overview?.catch?.(() => {}); // ASPI for today's snapshot (already in flight)
     recordValueSnapshot();
     checkPriceAlerts();
     populateSymbolSelects();
