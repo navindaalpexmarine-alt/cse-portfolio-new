@@ -24,6 +24,7 @@ function fill() {
   $('#setEmailDigest').checked = !!s.emailDigest;
   $('#setEmailDigest').disabled = !u;
   $('#digestTestBtn').disabled = !u;
+  $('#adminLink').hidden = !u?.admin; // site owner only (ADMIN_EMAILS on the server)
   $('#testApiResult').textContent = TEST_HINT;
 }
 
