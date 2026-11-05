@@ -14,6 +14,7 @@
   --gold: #D4AF37;
   --gold-dim: #8B7355;
   --gold-wash: rgba(212, 175, 55, .14);
+  --on-gold: #0B0F14;
   --ink: #EEF1F6;
   --muted: #8B95A8;
   --pos: #2ECC9A;  --pos-bg: rgba(46, 204, 154, .12);
@@ -45,6 +46,7 @@
   --gold: #8A6A0F;
   --gold-dim: #C2A35B;
   --gold-wash: rgba(170, 130, 20, .12);
+  --on-gold: #FFFFFF;
   --ink: #151A22;
   --muted: #5C6474;
   --pos: #0B7F57;  --pos-bg: rgba(11, 127, 87, .10);
@@ -937,3 +939,65 @@ body.locked .cse-chat { display: none !important; }
   .health-ring { width: 112px; height: 112px; }
   .heat-tile { min-height: 48px; }
 }
+
+
+/* ---- Navigation: clearer tabs + phone bottom bar ---- */
+.tab[aria-selected="true"] {
+  background: var(--gold); border-color: var(--gold); color: var(--on-gold); font-weight: 700;
+  box-shadow: 0 4px 14px var(--gold-wash);
+}
+.tab[aria-selected="true"]:hover { color: var(--on-gold); }
+/* Faded edge = more tabs that way (swipe hint) */
+.more-right > .tabs { -webkit-mask-image: linear-gradient(to right, #000 82%, transparent); mask-image: linear-gradient(to right, #000 82%, transparent); }
+.more-left > .tabs { -webkit-mask-image: linear-gradient(to left, #000 82%, transparent); mask-image: linear-gradient(to left, #000 82%, transparent); }
+.more-left.more-right > .tabs {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 12%, #000 82%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 12%, #000 82%, transparent);
+}
+
+.bottom-nav { display: none; }
+@media (max-width: 720px) {
+  .bottom-nav {
+    display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px;
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+    background: color-mix(in srgb, var(--panel) 94%, transparent);
+    backdrop-filter: saturate(140%) blur(12px); -webkit-backdrop-filter: saturate(140%) blur(12px);
+    border-top: 1px solid var(--line); box-shadow: 0 -6px 20px rgba(0, 0, 0, .16);
+  }
+  .bottom-nav button {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+    min-height: 54px; padding: 6px 2px; border: 0; border-radius: 12px; background: none;
+    color: var(--muted); font: 600 11px/1.1 var(--font-sans); cursor: pointer; -webkit-tap-highlight-color: transparent;
+  }
+  .bottom-nav button span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bottom-nav .ico { width: 22px; height: 22px; }
+  .bottom-nav button[aria-current="page"], .bottom-nav #moreBtn.on { color: var(--gold); background: var(--gold-wash); font-weight: 700; }
+  .bottom-nav button[aria-current="page"] .ico, .bottom-nav #moreBtn.on .ico { stroke-width: 2.4; }
+  body { padding-bottom: calc(74px + env(safe-area-inset-bottom)); }
+  .cse-chat-fab { bottom: calc(84px + env(safe-area-inset-bottom)); }
+  .cse-chat-panel { bottom: calc(154px + env(safe-area-inset-bottom)); max-height: calc(100vh - 172px); }
+  .toast { bottom: calc(88px + env(safe-area-inset-bottom)); }
+}
+body.locked .bottom-nav { display: none !important; }
+@media print { .bottom-nav, .sheet { display: none !important; } }
+
+/* "All sections" sheet (phone) */
+.sheet {
+  margin: auto auto 0; width: 100%; max-width: 560px; padding: 0;
+  border: 1px solid var(--line); border-bottom: 0; border-radius: 18px 18px 0 0;
+  background: var(--panel); color: var(--ink); box-shadow: var(--shadow-lg);
+}
+.sheet::backdrop { background: rgba(0, 0, 0, .55); }
+.sheet-body { padding: 16px 16px calc(18px + env(safe-area-inset-bottom)); }
+.sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.sheet-head h2 { margin: 0; font-size: 17px; }
+.sheet-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.sheet-item {
+  display: flex; flex-direction: column; align-items: center; gap: 8px; min-height: 78px; padding: 14px 6px;
+  border: 1px solid var(--line); border-radius: 14px; background: var(--panel-2); color: var(--ink);
+  font: 600 12.5px/1.2 var(--font-sans); text-align: center; cursor: pointer;
+}
+.sheet-item .ico { width: 24px; height: 24px; color: var(--gold); }
+.sheet-item[aria-current="page"] { background: var(--gold); border-color: var(--gold); color: var(--on-gold); }
+.sheet-item[aria-current="page"] .ico { color: var(--on-gold); }
