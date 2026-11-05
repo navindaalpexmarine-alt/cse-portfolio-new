@@ -48,6 +48,7 @@
     <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></symbol>
     <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
     <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1.1 2V16h5v-.2c.1-.8.5-1.5 1.1-2A6 6 0 0 0 12 3z"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
     <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
   </defs>
 </svg>
@@ -615,6 +616,25 @@
     <div class="ins-grid" id="insightsRoot"><div class="empty">Loading insights…</div></div>
   </section>
 </main>
+
+<!-- Phone only: app-style bar at the bottom (the full tab strip stays at the top) -->
+<nav class="bottom-nav" id="bottomNav" aria-label="Quick sections">
+  <button type="button" data-view="portfolio"><svg class="ico" aria-hidden="true"><use href="#i-pie"/></svg><span>Portfolio</span></button>
+  <button type="button" data-view="news"><svg class="ico" aria-hidden="true"><use href="#i-news"/></svg><span>News</span></button>
+  <button type="button" data-view="insights"><svg class="ico" aria-hidden="true"><use href="#i-bulb"/></svg><span>Insights</span></button>
+  <button type="button" data-view="calc"><svg class="ico" aria-hidden="true"><use href="#i-calc"/></svg><span>Calculator</span></button>
+  <button type="button" id="moreBtn" aria-haspopup="dialog" aria-controls="moreSheet"><svg class="ico" aria-hidden="true"><use href="#i-grid"/></svg><span>More</span></button>
+</nav>
+
+<dialog class="sheet" id="moreSheet" aria-labelledby="moreTitle">
+  <div class="sheet-body">
+    <div class="sheet-head">
+      <h2 id="moreTitle">All sections</h2>
+      <button class="icon-btn" type="button" id="moreClose" aria-label="Close"><svg class="ico" aria-hidden="true"><use href="#i-x"/></svg></button>
+    </div>
+    <div class="sheet-grid" id="moreGrid"></div>
+  </div>
+</dialog>
 
 <footer class="app-footer">
   <div class="wrap">
