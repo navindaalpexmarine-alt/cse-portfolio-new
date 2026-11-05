@@ -21,6 +21,9 @@ function fill() {
   $('#setMarketHours').checked = !!s.marketHoursOnly;
   $('#setNotify').checked = !!s.notify && 'Notification' in window && Notification.permission === 'granted';
   $('#setNotify').disabled = !('Notification' in window);
+  $('#setEmailDigest').checked = !!s.emailDigest;
+  $('#setEmailDigest').disabled = !u;
+  $('#digestTestBtn').disabled = !u;
   $('#testApiResult').textContent = TEST_HINT;
 }
 
@@ -73,6 +76,25 @@ function initAccount() {
     if (!v) return;
     const r = await guarded(() => account.newRecoveryCode(v.password));
     if (r) await showRecoveryCode(r.recoveryCode, sync.currentUser()?.email);
+  });
+
+  $('#setEmailDigest').addEventListener('change', async (e) => {
+    state.settings.emailDigest = e.target.checked;
+    commit('settings'); // synced to the account -> server adds/removes you from the list
+    if (sync.hasUnsyncedChanges()) await sync.push();
+    toast(e.target.checked ? 'Daily email on ✓ — first one after today\'s close' : 'Daily email off');
+  });
+
+  $('#digestTestBtn').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    setBusy(btn, true);
+    try {
+      if (sync.hasUnsyncedChanges()) await sync.push(); // email uses the copy saved in your account
+      const r = await guarded(() => account.sendTestDigest());
+      if (r) toast(`Test email sent to ${r.to} ✓`);
+    } finally {
+      setBusy(btn, false);
+    }
   });
 
   $('#signOutBtn').addEventListener('click', async () => {
