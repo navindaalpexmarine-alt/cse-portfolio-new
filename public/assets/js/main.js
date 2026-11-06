@@ -18,6 +18,7 @@ import { toast } from './core/ui.js';
 import { initSettings } from './views/settings.js';
 import { initChatbot } from './views/chatbot.js';
 import { initHowTo } from './core/howto.js';
+import { startVisits } from './core/visits.js';
 
 import portfolio from './views/portfolio.js';
 import calculator from './views/calculator.js';
@@ -171,6 +172,14 @@ function boot(user) {
   hideAuth();
   showAccount(user);
   load();
+  // Sign-up with "daily summary" unticked: switch it off on the new account.
+  try {
+    if (user && localStorage.getItem('cse_digest_off_pending') === '1') {
+      localStorage.removeItem('cse_digest_off_pending');
+      state.settings.digestOptOut = true;
+      commit('settings');
+    }
+  } catch { /* ignore */ }
   $('#commissionRate').value = state.commissionRate;
 
   onChange((topic) => {
@@ -238,6 +247,7 @@ async function start() {
 
   const user = await authenticate();
   boot(user);
+  startVisits(); // anonymous visitor count for the owner's page
   // Let Settings open sign-in when browsing as guest.
   window.__csePromptSignIn = promptSignIn;
 }
