@@ -63,6 +63,27 @@ function schedule() {
   timer = setTimeout(() => push(), PUSH_DELAY_MS);
 }
 
+/** Canonical form of the parts a person edits (drops live prices, snapshots, alert marks). */
+function userPart(d) {
+  const clean = (v) => {
+    if (Array.isArray(v)) return v.map(clean);
+    if (v && typeof v === 'object') {
+      const o = {};
+      for (const k of Object.keys(v).sort()) {
+        const x = clean(v[k]);
+        if (x === undefined || x === null || x === '' || x === 0 || x === false) continue;
+        o[k] = x;
+      }
+      return o;
+    }
+    return v;
+  };
+  const { valueSnaps, alertSeen, ...rest } = d || {};
+  rest.holdings = (rest.holdings || []).map(({ tradedPrice, ...h }) => h);
+  return JSON.stringify(clean(rest));
+}
+const sameUserData = (a, b) => userPart(a) === userPart(b);
+
 export function push({ force = false } = {}) {
   if (!user) return Promise.resolve();
   if (pushing) { again = true; return pushing; }
@@ -85,6 +106,13 @@ export function push({ force = false } = {}) {
         // sync. The portfolio is one document, so let the user pick which to keep
         // (default if dismissed: the most recent edit).
         const server = e.data;
+        // Only automatic data differs (prices, daily value snapshot, seen alerts)?
+        // Then nothing the user typed is at stake: rebase quietly and upload.
+        if (sameUserData(server.data, snapshotData())) {
+          setMeta({ baseUpdatedAt: server.updatedAt });
+          again = true;
+          return;
+        }
         const localNewer = (m.localUpdatedAt || 0) > (server.clientUpdatedAt || 0);
         const when = (t) => (t ? new Date(t).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'unknown time');
         const pick = await choose({

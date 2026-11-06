@@ -89,7 +89,7 @@ export async function refreshPrices({ silent = false } = {}) {
     checkPriceAlerts();
     populateSymbolSelects();
     setPriceStatus(`${n}/${state.holdings.length} · ${timeHM()}`, 'ok');
-    commit('prices');
+    commit('prices', { sync: false }); // prices are refreshed on every device; not a user edit
     if (n && !silent) toast('Prices updated ✓');
   } catch (err) {
     setPriceStatus('Manual OK', 'err');

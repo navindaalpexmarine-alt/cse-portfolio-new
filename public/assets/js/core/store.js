@@ -167,10 +167,13 @@ export function saveNow({ sync = true } = {}) {
     return false;
   }
 }
-export function save() {
+let pendingSync = false;
+/** Debounced save. `sync: false` = keep it on this device only (e.g. refreshed prices). */
+export function save({ sync = true } = {}) {
+  pendingSync = pendingSync || sync;
   setSaveStatus('Saving…', true);
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(saveNow, 350);
+  saveTimer = setTimeout(() => { const s = pendingSync; pendingSync = false; saveNow({ sync: s }); }, 350);
 }
 
 /* ---------- change bus ---------- */
@@ -182,9 +185,12 @@ export function emit(topic = 'data') {
 export function onChange(fn) {
   bus.addEventListener('change', (e) => fn(e.detail));
 }
-/** Save + notify. Call after any user-data mutation. */
-export function commit(topic = 'data') {
-  save();
+/** Save + notify. Call after any user-data mutation.
+ *  Automatic updates (live prices, seen-alert marks) pass { sync: false }: they are
+ *  saved here but not uploaded on their own, so two open devices don't keep
+ *  overwriting each other and asking "which version to keep?". */
+export function commit(topic = 'data', { sync = true } = {}) {
+  save({ sync });
   emit(topic);
 }
 
