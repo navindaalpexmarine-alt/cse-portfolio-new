@@ -40,7 +40,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
   goalReturn: 10,       // assumed yearly return % for planning
   fdRate: 0,            // fixed-deposit rate % to compare with
   xdRemind: true,       // remind before XD dates of your shares
-  emailDigest: false,   // daily e-mail summary after market close (needs an account)
+  digestOptOut: false,  // daily e-mail summary is ON for accounts unless turned off
 });
 
 /** Single source of truth. Persisted fields + runtime-only caches. */
