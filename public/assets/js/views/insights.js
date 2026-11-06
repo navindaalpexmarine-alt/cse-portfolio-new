@@ -377,7 +377,7 @@ async function checkXdReminders() {
     msgs.push(`${d.symbol} goes XD on ${dShort(d.xd)} — Rs ${fmt(d.dps)}/share (≈ ${rs(d.dps * h.balance)} for your ${fmtInt(h.balance)})`);
   }
   if (!msgs.length) return;
-  commit('alerts');
+  commit('alerts', { sync: false });
   toast(`💰 ${msgs.join(' · ')}`, { ms: 8000 });
   try {
     if (state.settings.notify && 'Notification' in window && Notification.permission === 'granted') {
