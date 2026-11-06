@@ -32,6 +32,19 @@
 </header>
 
 <main id="main" class="wrap" style="padding-top:20px;padding-bottom:40px">
+  <h1 style="margin:0 0 4px;font-size:24px">Site visitors</h1>
+  <p class="hint" style="margin:0 0 12px">Everyone who opens the app, with or without an account. Counted anonymously.</p>
+  <div class="summary" id="trafficSummary"></div>
+  <div class="panel" style="padding:16px 18px;margin-bottom:26px">
+    <div class="row-inline" style="justify-content:space-between;margin:0 0 10px">
+      <b>Last 14 days</b>
+      <span class="hint" style="margin:0"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--gold);vertical-align:middle"></span> visitors
+        &nbsp; <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--gold-wash);border:1px solid var(--gold);vertical-align:middle"></span> visits</span>
+    </div>
+    <div id="trafficChart" role="img" aria-label="Visitors per day for the last 14 days" style="display:flex;align-items:flex-end;gap:6px;height:150px"></div>
+    <div id="trafficDays" style="display:flex;gap:6px;margin-top:6px"></div>
+  </div>
+
   <div class="row-inline wrap-gap" style="justify-content:space-between">
     <h1 style="margin:0;font-size:24px">Accounts</h1>
     <div class="row-inline wrap-gap" style="margin:0">
