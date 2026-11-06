@@ -10,7 +10,7 @@
  *
  * Bump VERSION when the precache list changes.
  */
-const VERSION = 'v3.5.3';
+const VERSION = 'v3.6.0';
 const CACHE = `cse-portfolio-${VERSION}`;
 
 const SHELL = [
@@ -46,6 +46,7 @@ const SHELL = [
   'assets/js/views/history.js',
   'assets/js/views/insights.js',
   'assets/js/core/qr.js',
+  'assets/js/core/howto.js',
   'assets/js/views/market.js',
   'assets/js/views/news.js',
   'assets/js/views/portfolio.js',
@@ -106,6 +107,8 @@ self.addEventListener('fetch', (event) => {
   if (url.origin === self.location.origin) {
     // Account + portfolio data are private: let the browser hit the network directly.
     if (url.pathname.endsWith('/api/auth') || url.pathname.endsWith('/api/data')) return;
+    // Videos stream with Range requests: never cache them, let the browser fetch directly.
+    if (url.pathname.includes('/assets/video/')) return;
     if (request.mode === 'navigate') event.respondWith(networkFirst(request, 'index.html'));
     else event.respondWith(networkFirst(request));
     return;
