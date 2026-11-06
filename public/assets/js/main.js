@@ -17,6 +17,7 @@ import { $, num } from './core/utils.js';
 import { toast } from './core/ui.js';
 import { initSettings } from './views/settings.js';
 import { initChatbot } from './views/chatbot.js';
+import { initHowTo } from './core/howto.js';
 
 import portfolio from './views/portfolio.js';
 import calculator from './views/calculator.js';
@@ -228,6 +229,7 @@ function boot(user) {
 async function start() {
   setTheme(document.documentElement.dataset.theme || 'dark');
   $('#themeBtn').addEventListener('click', toggleTheme);
+  initHowTo(); // "Watch how it works" works on the sign-in screen too
 
   // Offline support + installable app (PWA). Not available on file:// or plain http (except localhost).
   if ('serviceWorker' in navigator && window.isSecureContext) {
