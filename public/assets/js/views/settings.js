@@ -21,7 +21,7 @@ function fill() {
   $('#setMarketHours').checked = !!s.marketHoursOnly;
   $('#setNotify').checked = !!s.notify && 'Notification' in window && Notification.permission === 'granted';
   $('#setNotify').disabled = !('Notification' in window);
-  $('#setEmailDigest').checked = !!s.emailDigest;
+  $('#setEmailDigest').checked = !s.digestOptOut;
   $('#setEmailDigest').disabled = !u;
   $('#digestTestBtn').disabled = !u;
   $('#adminLink').hidden = !u?.admin; // site owner only (ADMIN_EMAILS on the server)
@@ -80,10 +80,10 @@ function initAccount() {
   });
 
   $('#setEmailDigest').addEventListener('change', async (e) => {
-    state.settings.emailDigest = e.target.checked;
+    state.settings.digestOptOut = !e.target.checked;
     commit('settings'); // synced to the account -> server adds/removes you from the list
     if (sync.hasUnsyncedChanges()) await sync.push();
-    toast(e.target.checked ? 'Daily email on ✓ — first one after today\'s close' : 'Daily email off');
+    toast(e.target.checked ? 'Daily email on ✓' : 'Daily email off — you can turn it on again here any time');
   });
 
   $('#digestTestBtn').addEventListener('click', async (e) => {

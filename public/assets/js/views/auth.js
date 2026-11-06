@@ -85,9 +85,11 @@ function wire() {
 
   handle($('#loginForm'), async ({ email, password }) => (await api.login(email, password)).user);
 
-  handle($('#registerForm'), async ({ name, email, password, password2 }) => {
+  handle($('#registerForm'), async ({ name, email, password, password2, digest }) => {
     if (password !== password2) { $('#regPassword2').focus(); throw new Error('The two passwords do not match.'); }
     const r = await api.register(email, password, name);
+    // Unticked "daily summary": main.js turns it off once the new account has loaded.
+    try { if (!digest) localStorage.setItem('cse_digest_off_pending', '1'); } catch { /* ignore */ }
     await showRecoveryCode(r.recoveryCode, r.user.email);
     return r.user;
   });
