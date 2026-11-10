@@ -1084,6 +1084,14 @@ const FAQ = [
     { actions: [{ label: 'Open Guides', url: '/guides/' }] }),
   },
   {
+    re: /whats ?app|channel|චැනල්|වට්ස්/,
+    reply: (st) => R(pick(st,
+      'Follow our WhatsApp channel “CSE Market Watch” for site updates and daily market news.',
+      'අපේ WhatsApp channel එක “CSE Market Watch” — site updates සහ market news එනවා.',
+      'WhatsApp channel එක “CSE Market Watch” follow කරන්න — updates සහ market news.'),
+    { actions: [{ label: 'Open WhatsApp channel', url: 'https://whatsapp.com/channel/0029Vb9Fn5V5kg7CmUkexe2t' }] }),
+  },
+  {
     re: /contact|support|feedback|සම්බන්ධ/,
     reply: (st) => R(pick(st, 'Footer → Contact page for site questions or feedback.', 'Footer එකේ Contact page බලන්න.', 'Contact = footer link.')),
   },
