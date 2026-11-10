@@ -10,6 +10,7 @@ import { go } from '../core/router.js';
 import { $, esc, fmt, fmtDate, fmtInt, fmtOr, fmtPct, safeUrl } from '../core/utils.js';
 import { emptyHtml, setBusy, toast } from '../core/ui.js';
 import { parseDate } from '../core/dates.js';
+import { showWorld, worldOnTheme } from './world.js';
 
 let selected = '';
 let moversLoadedAt = 0;
@@ -371,6 +372,7 @@ export function init() {
 export async function show(params) {
   renderWatchlist();
   loadMovers();
+  showWorld();
   await ensureMarketSymbols(false);
   populateSymbolSelects();
   renderWatchlist();
@@ -380,6 +382,7 @@ export async function show(params) {
 
 /** Called by the router when data changes while this tab is open (live prices, sync…). */
 export function onData(topic) {
+  if (topic === 'theme') worldOnTheme();
   if (['prices', 'all', 'watchlist', 'holdings'].includes(topic)) renderWatchlist();
 }
 
