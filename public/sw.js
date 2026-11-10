@@ -10,7 +10,7 @@
  *
  * Bump VERSION when the precache list changes.
  */
-const VERSION = 'v3.6.2';
+const VERSION = 'v3.6.4';
 const CACHE = `cse-portfolio-${VERSION}`;
 
 const SHELL = [
@@ -53,6 +53,7 @@ const SHELL = [
   'assets/js/views/portfolio.js',
   'assets/js/views/settings.js',
   'assets/js/views/technical.js',
+  'assets/js/views/world.js',
 ];
 
 const CDN_HOSTS = ['cdnjs.cloudflare.com', 'cdn.sheetjs.com', 'fonts.googleapis.com', 'fonts.gstatic.com'];
@@ -110,8 +111,14 @@ self.addEventListener('fetch', (event) => {
     if (url.pathname.endsWith('/api/auth') || url.pathname.endsWith('/api/data')) return;
     // Videos stream with Range requests: never cache them, let the browser fetch directly.
     if (url.pathname.includes('/assets/video/')) return;
-    if (request.mode === 'navigate') event.respondWith(networkFirst(request, 'index.html'));
-    else event.respondWith(networkFirst(request));
+    if (request.mode === 'navigate') {
+      // Only the app itself works offline. Other pages (Users, About, Privacy, Guides) go
+      // straight to the network, so a clean-URL redirect (/admin.html -> /admin) never breaks them.
+      const path = new URL(self.registration.scope).pathname;
+      if (url.pathname === path || url.pathname === `${path}index.html`) event.respondWith(networkFirst(request, 'index.html'));
+      return;
+    }
+    event.respondWith(networkFirst(request));
     return;
   }
   if (CDN_HOSTS.includes(url.hostname)) {
