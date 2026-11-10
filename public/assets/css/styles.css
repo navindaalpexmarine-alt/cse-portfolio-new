@@ -168,6 +168,9 @@ main.wrap { flex: 1; padding-top: 20px; padding-bottom: 48px; outline: none; }
 .btn:active { transform: translateY(1px); }
 .btn:disabled { opacity: .45; cursor: not-allowed; }
 .btn.primary { background: var(--gold-wash); }
+.btn.wa-btn { background: #25D366; border-color: #25D366; color: #0B0F14; font-weight: 700; text-decoration: none; }
+.btn.wa-btn:hover { background: #1FB859; }
+.wa-link { color: #1FAF57; font-weight: 600; }
 .btn.primary:hover { background: color-mix(in srgb, var(--gold) 26%, transparent); }
 .btn.ghost { border-color: var(--line); color: var(--muted); }
 .btn.ghost:hover { color: var(--ink); border-color: var(--muted); background: var(--panel-2); }
