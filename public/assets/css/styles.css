@@ -376,6 +376,10 @@ input.cell.live { color: var(--gold); font-weight: 600; }
 .h-badges { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; vertical-align: middle; margin-left: 6px; }
 .h-sub { font-size: 13px; color: var(--muted); font-weight: 500; font-family: var(--font-sans); }
 
+.world-box { height: 470px; border-radius: 12px; overflow: hidden; }
+.world-box .world-widget, .world-box .tradingview-widget-container__widget { height: 100%; width: 100%; }
+.world-box .empty { height: 100%; display: grid; place-items: center; }
+.world-note { margin: 10px 0 0; font-size: 12px; }
 .movers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
 .movers h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: 8px; }
 .mover-list { list-style: none; display: grid; gap: 4px; }
