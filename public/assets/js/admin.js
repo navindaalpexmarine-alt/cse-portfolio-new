@@ -108,6 +108,36 @@ function renderTraffic(t) {
   $('#trafficDays').innerHTML = t.daily.map((d, i) => `<div class="hint" style="flex:1;text-align:center;margin:0;font-size:11px">${i % 2 === 1 || i === 13 ? esc(d.day.slice(8)) : ''}</div>`).join('');
 }
 
+async function makeWa() {
+  const st = $('#waStatus');
+  const btn = $('#waMake');
+  btn.disabled = true;
+  st.textContent = 'Getting today\'s market data…';
+  try {
+    const res = await fetch('api/digest?action=wa', { credentials: 'same-origin', cache: 'no-store', headers: { Accept: 'application/json' } });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) { st.textContent = data.message || `Could not make the post (${res.status}).`; return; }
+    $('#waText').value = data.text;
+    $('#waCopy').disabled = false;
+    st.innerHTML = data.marketOpen
+      ? '<b style="color:var(--neg)">The market is still open</b>, so these numbers will change. For the closing summary, make it again after 2:30 pm.'
+      : 'Ready. Tap <b>Copy</b>, then <b>Open channel</b> and paste.';
+  } catch {
+    st.textContent = 'Cannot reach the server. Check your connection.';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function copyWa() {
+  const t = $('#waText');
+  try { await navigator.clipboard.writeText(t.value); } catch { t.select(); document.execCommand('copy'); }
+  $('#waCopy').textContent = 'Copied ✓';
+  setTimeout(() => { $('#waCopy').textContent = 'Copy'; }, 2000);
+}
+
+$('#waMake').addEventListener('click', makeWa);
+$('#waCopy').addEventListener('click', copyWa);
 $('#adminSearch').addEventListener('input', render);
 $('#adminRows').addEventListener('click', (e) => { const b = e.target.closest('[data-digest-id]'); if (b) toggleDigest(b); });
 // keep "Live now" fresh while the page is open
