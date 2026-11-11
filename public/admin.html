@@ -32,6 +32,19 @@
 </header>
 
 <main id="main" class="wrap" style="padding-top:20px;padding-bottom:40px">
+  <div class="panel" id="waPanel" style="padding:16px 18px;margin-bottom:26px">
+    <div class="row-inline wrap-gap" style="justify-content:space-between;margin:0 0 8px">
+      <h2 style="margin:0;font-size:20px">WhatsApp channel post</h2>
+      <div class="row-inline wrap-gap" style="margin:0">
+        <button class="btn" type="button" id="waMake">Make today's post</button>
+        <button class="btn" type="button" id="waCopy" disabled>Copy</button>
+        <a class="btn" id="waOpen" href="https://whatsapp.com/channel/0029Vb9Fn5V5kg7CmUkexe2t" target="_blank" rel="noopener" style="background:#25D366;border-color:#25D366;color:#0B0F14;font-weight:700;text-decoration:none">Open channel</a>
+      </div>
+    </div>
+    <p class="hint" id="waStatus" role="status" style="margin:0 0 8px">After the market closes (2:30 pm), tap <b>Make today's post</b>, then <b>Copy</b>, open the channel and paste. You also get this post in your daily email.</p>
+    <textarea id="waText" rows="14" readonly aria-label="WhatsApp post text" style="width:100%;box-sizing:border-box;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--panel-2, var(--panel));color:var(--ink);font:14px/1.5 inherit;font-family:inherit;resize:vertical" placeholder="The post appears here."></textarea>
+  </div>
+
   <h1 style="margin:0 0 4px;font-size:24px">Site visitors</h1>
   <p class="hint" style="margin:0 0 12px">Everyone who opens the app, with or without an account. Counted anonymously.</p>
   <div class="summary" id="trafficSummary"></div>
