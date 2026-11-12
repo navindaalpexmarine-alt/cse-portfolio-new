@@ -76,6 +76,11 @@
     <p class="hint" style="margin:0 0 8px">Optional. A few sentences in your own words about today's market (what happened, any big news). It appears on <a id="noteLink" href="market" target="_blank" rel="noopener">today's market close page</a> and helps the site's quality for Google. Facts and context only, no buy/sell advice.</p>
     <textarea id="noteText" rows="5" maxlength="2000" aria-label="Note for the market page" style="width:100%;box-sizing:border-box;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--panel-2, var(--panel));color:var(--ink);font:14px/1.5 inherit;font-family:inherit;resize:vertical" placeholder="e.g. Banks led the market higher after the Central Bank kept policy rates unchanged…"></textarea>
     <h3 style="margin:16px 0 6px;font-size:16px">Crossings today <span class="hint" style="font-weight:400">(optional, from your broker's daily report)</span></h3>
+    <div class="row-inline wrap-gap" style="margin:0 0 10px">
+      <label class="btn" for="crossPdf" style="cursor:pointer">📄 Upload ATrad crossings PDF</label>
+      <input type="file" id="crossPdf" accept="application/pdf,.pdf" hidden>
+      <span class="hint" id="crossPdfStatus" role="status">ATrad → Daily Symbol Trading Summary (crossing board) → PDF. Fills the fields below.</span>
+    </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">
       <label class="hint" style="display:grid;gap:4px">Total crossings (Rs mn)<input id="crossValue" type="number" min="0" step="0.01" inputmode="decimal" placeholder="e.g. 1630" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel-2, var(--panel));color:var(--ink);font:inherit"></label>
       <label class="hint" style="display:grid;gap:4px">Largest crossing: share<input id="crossSym" type="text" maxlength="16" placeholder="e.g. KZOO.N" autocapitalize="characters" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel-2, var(--panel));color:var(--ink);font:inherit"></label>
