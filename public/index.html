@@ -124,6 +124,7 @@
 
     <p class="auth-foot">Your portfolio is saved securely to your account and synced across your devices.</p>
   </div>
+
 </div>
 
 <header class="app-header">
@@ -652,14 +653,56 @@
   </div>
 </dialog>
 
+  <section class="auth-about wrap" id="aboutApp" aria-labelledby="aboutAppTitle">
+  <h1 id="aboutAppTitle">A free share tracker for Colombo Stock Exchange investors</h1>
+  <p>CSE Portfolio shows what your Sri Lankan shares are worth right now, how much you have made or lost after brokerage costs, and the exact price you need to sell at to break even. It works in any browser on your phone or laptop, with nothing to install.</p>
+
+  <h2>What you can do</h2>
+  <ul class="about-grid">
+    <li><b>Live prices and profit/loss.</b> Prices refresh during market hours. See today's change, total gain or loss, and your portfolio value.</li>
+    <li><b>Break-even sell price.</b> The price that covers your buying cost plus the selling commission, so you know when a sale actually makes money.</li>
+    <li><b>Buy/sell calculator.</b> Work out the full cost of a trade, with the combined broker, CSE, SEC and CDS commission, before you place the order.</li>
+    <li><b>Dividends and XD dates.</b> Upcoming ex-dividend dates for shares you hold, dividend yield on your cost, and income received.</li>
+    <li><b>News for your shares.</b> CSE announcements and financial reports for the companies you own, with new ones highlighted.</li>
+    <li><b>Fundamentals and charts.</b> Company data, market movers, world markets, and technical charts with moving averages and RSI.</li>
+    <li><b>Import from your broker.</b> Upload the portfolio Excel file from ATrad instead of typing every holding.</li>
+    <li><b>Daily email.</b> A short summary after the market closes: the ASPI, your portfolio's day, and coming XD dates.</li>
+  </ul>
+
+  <h2>How it works</h2>
+  <ol>
+    <li>Create a free account with your email, or continue without one to try the calculator, news and guides.</li>
+    <li>Add your holdings: share symbol, quantity and average price, or import your broker's Excel file.</li>
+    <li>Open the app any time to see your up-to-date value, profit or loss, and the dates that matter.</li>
+  </ol>
+
+  <h2>Questions</h2>
+  <details><summary>Is it free?</summary><p>Yes. All features are free. The site may show ads in the future to cover running costs.</p></details>
+  <details><summary>Does it connect to my broker or CDS account?</summary><p>No. It never asks for your broker login. You enter your holdings yourself (or upload your broker's Excel export), so it can only show information, never trade.</p></details>
+  <details><summary>Where do the prices come from?</summary><p>From the Colombo Stock Exchange's public market data. Prices can be delayed, so always confirm with your broker before you trade.</p></details>
+  <details><summary>Does it tell me what to buy or sell?</summary><p>No. It shows facts and calculations about your own holdings. It does not give investment advice or price targets.</p></details>
+  <details><summary>Is my portfolio private?</summary><p>Your holdings are linked to your account and are never shown to anyone else. See the <a href="privacy">privacy policy</a>.</p></details>
+
+  <h2>Learn more</h2>
+  <p class="about-links">
+    <a href="market">Daily market close summaries</a> ·
+    <a href="guides/">Beginner guides to investing on the CSE</a> ·
+    <a href="https://whatsapp.com/channel/0029Vb9Fn5V5kg7CmUkexe2t" target="_blank" rel="noopener">WhatsApp channel</a> ·
+    <a href="about">About this site</a>
+  </p>
+  <p class="t-muted about-small">Not affiliated with the Colombo Stock Exchange. Not investment advice.</p>
+</section>
+
 <footer class="app-footer">
   <div class="wrap">
     <p><b>Not investment advice.</b> Signals are rule-based hints; always confirm with the CSE and your broker.
       Data: Colombo Stock Exchange, Google News, TradingView. Your portfolio is saved privately to your account.</p>
     <p class="footer-links">
       <button class="link-btn" type="button" id="helpBtn">Keyboard shortcuts (?)</button> ·
+      <button class="link-btn fb-link" type="button" data-feedback>Feedback</button> ·
       <button class="link-btn" type="button" data-open-settings>Backup &amp; settings</button> ·
       <a class="wa-link" href="https://whatsapp.com/channel/0029Vb9Fn5V5kg7CmUkexe2t" target="_blank" rel="noopener">WhatsApp channel</a> ·
+      <a href="market">Market close</a> ·
       <a href="guides/">Guides</a> ·
       <a href="about.html">About</a> ·
       <a href="privacy.html">Privacy</a> ·
@@ -693,6 +736,14 @@
       <div class="row-inline wrap-gap">
         <button class="btn ghost" type="button" id="digestTestBtn">Send me a test email</button>
         <span id="digestHint" class="hint" role="status">Emails go to the address you signed in with. Check your spam folder the first time.</span>
+      </div>
+    </section>
+
+    <section class="dialog-section">
+      <h3>Feedback</h3>
+      <div class="row-inline wrap-gap">
+        <button class="btn" type="button" data-feedback>Send a review or suggestion</button>
+        <span class="hint">Tell us what you like, what is missing, or report a problem.</span>
       </div>
     </section>
 
@@ -804,6 +855,44 @@
     <div class="dialog-actions">
       <button class="btn ghost" value="cancel" formnovalidate>Cancel</button>
       <button class="btn primary" value="ok" id="formSubmit">OK</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="dialog dialog-sm" id="feedbackDialog" aria-labelledby="feedbackTitle">
+  <form class="dialog-body" id="feedbackForm" novalidate>
+    <div class="dialog-head">
+      <h2 id="feedbackTitle">Send feedback</h2>
+      <button class="icon-btn" type="button" id="feedbackClose" aria-label="Close"><svg class="ico" aria-hidden="true"><use href="#i-x"/></svg></button>
+    </div>
+    <p class="hint" style="margin-top:0">Your message goes only to the site owner. It is never shown publicly.</p>
+    <fieldset class="fb-kinds">
+      <legend class="sr-only">Type of feedback</legend>
+      <label><input type="radio" name="kind" value="suggestion" checked> <span>💡 Suggestion</span></label>
+      <label><input type="radio" name="kind" value="review"> <span>⭐ Review</span></label>
+      <label><input type="radio" name="kind" value="problem"> <span>🐞 Problem</span></label>
+    </fieldset>
+    <fieldset class="fb-stars">
+      <legend>How would you rate CSE Portfolio? <span class="t-muted">(optional)</span></legend>
+      <div class="stars" role="radiogroup">
+        <label title="5 stars"><input type="radio" name="rating" value="5"><span aria-hidden="true">★</span><span class="sr-only">5 stars</span></label>
+        <label title="4 stars"><input type="radio" name="rating" value="4"><span aria-hidden="true">★</span><span class="sr-only">4 stars</span></label>
+        <label title="3 stars"><input type="radio" name="rating" value="3"><span aria-hidden="true">★</span><span class="sr-only">3 stars</span></label>
+        <label title="2 stars"><input type="radio" name="rating" value="2"><span aria-hidden="true">★</span><span class="sr-only">2 stars</span></label>
+        <label title="1 star"><input type="radio" name="rating" value="1"><span aria-hidden="true">★</span><span class="sr-only">1 star</span></label>
+      </div>
+    </fieldset>
+    <label class="fb-field"><span>Your message</span>
+      <textarea name="message" id="feedbackMessage" rows="5" maxlength="1500" required placeholder="What do you like? What should we add or fix?"></textarea>
+    </label>
+    <label class="fb-field" id="feedbackEmailRow"><span>Email <span class="t-muted">(optional, only if you want a reply)</span></span>
+      <input class="search" type="email" name="email" autocomplete="email" maxlength="120" placeholder="you@example.com">
+    </label>
+    <input type="text" name="website" tabindex="-1" autocomplete="off" class="fb-hp" aria-hidden="true">
+    <p class="auth-error" id="feedbackError" role="alert" hidden></p>
+    <div class="dialog-actions">
+      <button class="btn ghost" type="button" id="feedbackCancel">Cancel</button>
+      <button class="btn primary" type="submit" id="feedbackSend">Send</button>
     </div>
   </form>
 </dialog>

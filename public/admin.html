@@ -14,6 +14,17 @@
 <link rel="stylesheet" href="assets/css/styles.css">
 <link rel="stylesheet" href="assets/css/legal.css">
 <script src="assets/js/theme-init.js"></script>
+<style>
+.fb-badge{display:inline-block;min-width:22px;padding:1px 7px;border-radius:12px;background:var(--neg,#E85D5D);color:#fff;font:700 13px/1.6 Inter,sans-serif;text-align:center;vertical-align:middle}
+.fb-item{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:0 0 10px;background:var(--panel)}
+.fb-item.unread{border-color:var(--gold);box-shadow:inset 3px 0 0 var(--gold)}
+.fb-top{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:13px;color:var(--muted);margin-bottom:6px}
+.fb-kind{font-weight:700;color:var(--ink)}
+.fb-stars{color:var(--gold);letter-spacing:1px}
+.fb-msg{white-space:pre-wrap;word-break:break-word;margin:0 0 8px;font-size:15px;line-height:1.5}
+.fb-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:13px}
+.fb-actions .btn{padding:5px 10px;font-size:13px}
+</style>
 </head>
 <body class="legal-page">
 <header class="legal-header">
@@ -32,6 +43,24 @@
 </header>
 
 <main id="main" class="wrap" style="padding-top:20px;padding-bottom:40px">
+  <div class="panel" id="fbPanel" style="padding:16px 18px;margin-bottom:26px">
+    <div class="row-inline wrap-gap" style="justify-content:space-between;margin:0 0 8px">
+      <h2 style="margin:0;font-size:20px">Reviews &amp; suggestions <span class="fb-badge" id="fbUnread" hidden></span></h2>
+      <div class="row-inline wrap-gap" style="margin:0">
+        <select id="fbFilter" class="search" aria-label="Show" style="width:auto;padding:8px 10px">
+          <option value="all">All</option>
+          <option value="unread">Unread</option>
+          <option value="suggestion">Suggestions</option>
+          <option value="review">Reviews</option>
+          <option value="problem">Problems</option>
+        </select>
+        <button class="btn" type="button" id="fbAllRead">Mark all read</button>
+      </div>
+    </div>
+    <p class="hint" id="fbSummary" style="margin:0 0 10px">Loading…</p>
+    <div id="fbList"></div>
+  </div>
+
   <div class="panel" id="waPanel" style="padding:16px 18px;margin-bottom:26px">
     <div class="row-inline wrap-gap" style="justify-content:space-between;margin:0 0 8px">
       <h2 style="margin:0;font-size:20px">WhatsApp channel post</h2>
@@ -43,6 +72,10 @@
     </div>
     <p class="hint" id="waStatus" role="status" style="margin:0 0 8px">After the market closes (2:30 pm), tap <b>Make today's post</b>, then <b>Copy</b>, open the channel and paste. You also get this post in your daily email.</p>
     <textarea id="waText" rows="14" readonly aria-label="WhatsApp post text" style="width:100%;box-sizing:border-box;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--panel-2, var(--panel));color:var(--ink);font:14px/1.5 inherit;font-family:inherit;resize:vertical" placeholder="The post appears here."></textarea>
+    <h3 style="margin:18px 0 6px;font-size:16px">Note for the public market page</h3>
+    <p class="hint" style="margin:0 0 8px">Optional. A few sentences in your own words about today's market (what happened, any big news). It appears on <a id="noteLink" href="market" target="_blank" rel="noopener">today's market close page</a> and helps the site's quality for Google. Facts and context only, no buy/sell advice.</p>
+    <textarea id="noteText" rows="5" maxlength="2000" aria-label="Note for the market page" style="width:100%;box-sizing:border-box;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--panel-2, var(--panel));color:var(--ink);font:14px/1.5 inherit;font-family:inherit;resize:vertical" placeholder="e.g. Banks led the market higher after the Central Bank kept policy rates unchanged…"></textarea>
+    <div class="row-inline wrap-gap" style="margin:8px 0 0"><button class="btn" type="button" id="noteSave">Save note</button><span class="hint" id="noteStatus" role="status"></span></div>
   </div>
 
   <h1 style="margin:0 0 4px;font-size:24px">Site visitors</h1>

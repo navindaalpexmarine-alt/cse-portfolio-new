@@ -3,6 +3,7 @@ User-agent: *
 Allow: /
 
 Sitemap: https://cse-portfolio-new.vercel.app/sitemap.xml
+Sitemap: https://cse-portfolio-new.vercel.app/market-sitemap.xml
 
 # Sitemap can be added later if you publish content pages.
 # Sitemap: https://cse-portfolio-new.vercel.app/sitemap.xml
