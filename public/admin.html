@@ -75,7 +75,14 @@
     <h3 style="margin:18px 0 6px;font-size:16px">Note for the public market page</h3>
     <p class="hint" style="margin:0 0 8px">Optional. A few sentences in your own words about today's market (what happened, any big news). It appears on <a id="noteLink" href="market" target="_blank" rel="noopener">today's market close page</a> and helps the site's quality for Google. Facts and context only, no buy/sell advice.</p>
     <textarea id="noteText" rows="5" maxlength="2000" aria-label="Note for the market page" style="width:100%;box-sizing:border-box;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--panel-2, var(--panel));color:var(--ink);font:14px/1.5 inherit;font-family:inherit;resize:vertical" placeholder="e.g. Banks led the market higher after the Central Bank kept policy rates unchanged…"></textarea>
-    <div class="row-inline wrap-gap" style="margin:8px 0 0"><button class="btn" type="button" id="noteSave">Save note</button><span class="hint" id="noteStatus" role="status"></span></div>
+    <h3 style="margin:16px 0 6px;font-size:16px">Crossings today <span class="hint" style="font-weight:400">(optional, from your broker's daily report)</span></h3>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">
+      <label class="hint" style="display:grid;gap:4px">Total crossings (Rs mn)<input id="crossValue" type="number" min="0" step="0.01" inputmode="decimal" placeholder="e.g. 1630" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel-2, var(--panel));color:var(--ink);font:inherit"></label>
+      <label class="hint" style="display:grid;gap:4px">Largest crossing: share<input id="crossSym" type="text" maxlength="16" placeholder="e.g. KZOO.N" autocapitalize="characters" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel-2, var(--panel));color:var(--ink);font:inherit"></label>
+      <label class="hint" style="display:grid;gap:4px">Largest crossing (Rs mn)<input id="crossLargest" type="number" min="0" step="0.01" inputmode="decimal" placeholder="e.g. 1230" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel-2, var(--panel));color:var(--ink);font:inherit"></label>
+    </div>
+    <p class="hint" style="margin:6px 0 0">Shown on the market page and in the WhatsApp post. Save, then tap <b>Make today's post</b> again to include it.</p>
+    <div class="row-inline wrap-gap" style="margin:10px 0 0"><button class="btn" type="button" id="noteSave">Save note &amp; crossings</button><span class="hint" id="noteStatus" role="status"></span></div>
   </div>
 
   <h1 style="margin:0 0 4px;font-size:24px">Site visitors</h1>
