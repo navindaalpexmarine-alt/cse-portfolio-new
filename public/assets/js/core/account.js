@@ -40,6 +40,7 @@ const auth = (action, body) => call('POST', `api/auth?action=${action}`, body);
 
 /** Sends the signed-in user one daily-summary e-mail now. */
 export const sendTestDigest = () => call('POST', 'api/digest?action=test', {});
+export const sendFeedback = (payload) => call('POST', 'api/feedback?action=send', payload);
 
 export const me = () => call('GET', 'api/auth?action=me');
 export const register = (email, password, name) => auth('register', { email, password, name });
