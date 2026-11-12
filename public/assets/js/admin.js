@@ -227,6 +227,10 @@ async function loadNote() {
     if (!res.ok) { $('#noteStatus').textContent = data.message || ''; return; }
     noteDay = data.day;
     $('#noteText').value = data.note || '';
+    const c = data.crossings;
+    $('#crossValue').value = c?.value ? +(c.value / 1e6).toFixed(2) : '';
+    $('#crossSym').value = c?.largestSymbol || '';
+    $('#crossLargest').value = c?.largestValue ? +(c.largestValue / 1e6).toFixed(2) : '';
     $('#noteLink').href = `market/${data.day}`;
     $('#noteStatus').textContent = `For ${data.day}.`;
   } catch { /* offline */ }
@@ -239,7 +243,15 @@ async function saveNote() {
     const res = await fetch('api/market?action=note', {
       method: 'POST', credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'cse-portfolio', Accept: 'application/json' },
-      body: JSON.stringify({ day: noteDay || undefined, note: $('#noteText').value }),
+      body: JSON.stringify({
+        day: noteDay || undefined,
+        note: $('#noteText').value,
+        crossings: {
+          value: Number($('#crossValue').value || 0) * 1e6,
+          largestSymbol: $('#crossSym').value.trim(),
+          largestValue: Number($('#crossLargest').value || 0) * 1e6,
+        },
+      }),
     });
     const data = await res.json().catch(() => ({}));
     st.textContent = res.ok ? `Saved for ${data.day} ✓` : (data.message || `Could not save (${res.status}).`);
