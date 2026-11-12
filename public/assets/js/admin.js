@@ -122,6 +122,7 @@ async function makeWa() {
     st.innerHTML = data.marketOpen
       ? '<b style="color:var(--neg)">The market is still open</b>, so these numbers will change. For the closing summary, make it again after 2:30 pm.'
       : 'Ready. Tap <b>Copy</b>, then <b>Open channel</b> and paste.';
+    if (data.archived) loadNote();
   } catch {
     st.textContent = 'Cannot reach the server. Check your connection.';
   } finally {
@@ -136,11 +137,122 @@ async function copyWa() {
   setTimeout(() => { $('#waCopy').textContent = 'Copy'; }, 2000);
 }
 
+/* ---------- reviews & suggestions ---------- */
+let fbItems = [];
+const KIND = { suggestion: '💡 Suggestion', review: '⭐ Review', problem: '🐞 Problem' };
+
+async function fbCall(action, body) {
+  const res = await fetch(`api/feedback?action=${action}`, {
+    method: body ? 'POST' : 'GET', credentials: 'same-origin', cache: 'no-store',
+    headers: { Accept: 'application/json', ...(body ? { 'Content-Type': 'application/json', 'X-Requested-With': 'cse-portfolio' } : {}) },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || `Request failed (${res.status})`);
+  return data;
+}
+
+function renderFeedback(meta) {
+  const f = $('#fbFilter').value;
+  const list = fbItems.filter((i) => (f === 'all' ? true : f === 'unread' ? !i.read : i.kind === f));
+  const unread = fbItems.filter((i) => !i.read).length;
+  const badge = $('#fbUnread');
+  badge.hidden = !unread;
+  badge.textContent = unread;
+  if (meta) {
+    $('#fbSummary').textContent = fbItems.length
+      ? `${fbItems.length} message${fbItems.length === 1 ? '' : 's'} · ${unread} unread${meta.avgRating ? ` · average rating ${meta.avgRating} ★ from ${meta.ratings}` : ''}`
+      : 'No feedback yet. Visitors can send it from the footer link "Feedback", Settings, or the help chatbot.';
+  }
+  $('#fbList').innerHTML = list.length ? list.map((i) => `
+    <article class="fb-item ${i.read ? '' : 'unread'}" data-id="${esc(i.id)}">
+      <div class="fb-top">
+        <span class="fb-kind">${KIND[i.kind] || esc(i.kind)}</span>
+        ${i.rating ? `<span class="fb-stars" title="${i.rating} of 5">${'★'.repeat(i.rating)}${'☆'.repeat(5 - i.rating)}</span>` : ''}
+        <span>${esc(day(i.at))} · ${esc(ago(i.at))}</span>
+        <span>${i.userId ? 'Signed-in user' : 'Guest'}${i.name ? ` · ${esc(i.name)}` : ''}${i.page ? ` · on ${esc(i.page)}` : ''}</span>
+      </div>
+      <p class="fb-msg">${esc(i.message)}</p>
+      <div class="fb-actions">
+        ${i.email ? `<a class="btn" href="mailto:${esc(i.email)}?subject=${encodeURIComponent('Your feedback on CSE Portfolio')}">Reply to ${esc(i.email)}</a>` : '<span class="hint">No email given</span>'}
+        <button class="btn" type="button" data-fb-read="${i.read ? 'false' : 'true'}">${i.read ? 'Mark unread' : 'Mark read'}</button>
+        <button class="btn" type="button" data-fb-del>Delete</button>
+      </div>
+    </article>`).join('') : (fbItems.length ? '<p class="hint">Nothing in this view.</p>' : '');
+}
+
+async function loadFeedback() {
+  try {
+    const data = await fbCall('list');
+    fbItems = data.items || [];
+    renderFeedback(data);
+  } catch (e) {
+    $('#fbSummary').textContent = e.message;
+  }
+}
+
+$('#fbFilter').addEventListener('change', () => renderFeedback());
+$('#fbAllRead').addEventListener('click', async () => {
+  const ids = fbItems.filter((i) => !i.read).map((i) => i.id);
+  if (!ids.length) return;
+  try { await fbCall('mark', { ids, read: true }); fbItems.forEach((i) => { i.read = true; }); renderFeedback({}); loadFeedback(); } catch (e) { alert(e.message); }
+});
+$('#fbList').addEventListener('click', async (e) => {
+  const item = e.target.closest('.fb-item');
+  if (!item) return;
+  const id = item.dataset.id;
+  const it = fbItems.find((x) => x.id === id);
+  try {
+    if (e.target.closest('[data-fb-read]')) {
+      const read = e.target.closest('[data-fb-read]').dataset.fbRead === 'true';
+      await fbCall('mark', { id, read });
+      it.read = read;
+      renderFeedback();
+    } else if (e.target.closest('[data-fb-del]')) {
+      if (!confirm('Delete this message permanently?')) return;
+      await fbCall('delete', { id });
+      fbItems = fbItems.filter((x) => x.id !== id);
+      renderFeedback();
+      loadFeedback();
+    }
+  } catch (err) { alert(err.message); }
+});
+loadFeedback();
+
+let noteDay = '';
+async function loadNote() {
+  try {
+    const res = await fetch('api/market?action=note', { credentials: 'same-origin', cache: 'no-store', headers: { Accept: 'application/json' } });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) { $('#noteStatus').textContent = data.message || ''; return; }
+    noteDay = data.day;
+    $('#noteText').value = data.note || '';
+    $('#noteLink').href = `market/${data.day}`;
+    $('#noteStatus').textContent = `For ${data.day}.`;
+  } catch { /* offline */ }
+}
+
+async function saveNote() {
+  const st = $('#noteStatus');
+  st.textContent = 'Saving…';
+  try {
+    const res = await fetch('api/market?action=note', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'cse-portfolio', Accept: 'application/json' },
+      body: JSON.stringify({ day: noteDay || undefined, note: $('#noteText').value }),
+    });
+    const data = await res.json().catch(() => ({}));
+    st.textContent = res.ok ? `Saved for ${data.day} ✓` : (data.message || `Could not save (${res.status}).`);
+  } catch { st.textContent = 'Cannot reach the server.'; }
+}
+
+$('#noteSave').addEventListener('click', saveNote);
+loadNote();
 $('#waMake').addEventListener('click', makeWa);
 $('#waCopy').addEventListener('click', copyWa);
 $('#adminSearch').addEventListener('input', render);
 $('#adminRows').addEventListener('click', (e) => { const b = e.target.closest('[data-digest-id]'); if (b) toggleDigest(b); });
 // keep "Live now" fresh while the page is open
-setInterval(() => { if (document.visibilityState === 'visible') load(); }, 30_000);
+setInterval(() => { if (document.visibilityState === 'visible') { load(); loadFeedback(); } }, 30_000);
 $('#adminRefresh').addEventListener('click', load);
 load();

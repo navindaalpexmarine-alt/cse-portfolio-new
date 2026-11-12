@@ -18,6 +18,7 @@ import { toast } from './core/ui.js';
 import { initSettings } from './views/settings.js';
 import { initChatbot } from './views/chatbot.js';
 import { initHowTo } from './core/howto.js';
+import { initFeedback, setFeedbackUser } from './core/feedback.js';
 import { startVisits } from './core/visits.js';
 
 import portfolio from './views/portfolio.js';
@@ -153,11 +154,14 @@ async function prepare(user) {
 }
 
 function showAccount(user) {
+  setFeedbackUser(user);
   if (!user) {
     $('#accountInitial').textContent = '?';
     $('#accountBtn').setAttribute('aria-label', 'Sign in');
     const gb = $('#guestBanner');
     if (gb) gb.hidden = false;
+    const ab = $('#aboutApp');
+    if (ab) ab.hidden = false;
     return;
   }
   const label = (user.name || user.email || '?').trim();
@@ -165,6 +169,9 @@ function showAccount(user) {
   $('#accountBtn').setAttribute('aria-label', `Account: ${user.email}`);
   const gb = $('#guestBanner');
   if (gb) gb.hidden = true;
+  // The public "about this app" text is for visitors and search engines, not signed-in users.
+  const ab = $('#aboutApp');
+  if (ab) ab.hidden = true;
 }
 
 /* ---------- boot ---------- */
@@ -239,6 +246,7 @@ async function start() {
   setTheme(document.documentElement.dataset.theme || 'dark');
   $('#themeBtn').addEventListener('click', toggleTheme);
   initHowTo(); // "Watch how it works" works on the sign-in screen too
+  initFeedback();
 
   // Offline support + installable app (PWA). Not available on file:// or plain http (except localhost).
   if ('serviceWorker' in navigator && window.isSecureContext) {
