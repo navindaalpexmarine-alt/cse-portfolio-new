@@ -1092,7 +1092,15 @@ const FAQ = [
     { actions: [{ label: 'Open WhatsApp channel', url: 'https://whatsapp.com/channel/0029Vb9Fn5V5kg7CmUkexe2t' }] }),
   },
   {
-    re: /contact|support|feedback|සම්බන්ධ/,
+    re: /feedback|suggest|review|complain|bug|යෝජනා|අදහස්|ප්‍රතිචාර/,
+    reply: (st) => R(pick(st,
+      'We would love to hear it! Tap below to send a review, suggestion or problem report. It goes straight to the site owner.',
+      'ඔයාගේ අදහස් කියන්න! පහළ button එක ඔබලා review එකක්, suggestion එකක් හෝ problem එකක් යවන්න. ඒක site owner ට කෙලින්ම යනවා.',
+      'Review / suggestion / problem එකක් යවන්න පහළ button එක ඔබන්න.'),
+    { actions: [{ label: 'Send feedback', feedback: 'suggestion' }] }),
+  },
+  {
+    re: /contact|support|සම්බන්ධ/,
     reply: (st) => R(pick(st, 'Footer → Contact page for site questions or feedback.', 'Footer එකේ Contact page බලන්න.', 'Contact = footer link.')),
   },
   {
@@ -2229,7 +2237,7 @@ export function initChatbot() {
 
     if (who === 'bot') {
       const acts = (typeof msg === 'object' && msg.actions) || [];
-      if (acts.some((a) => a.url || a.tab || (a.trade && save))) {
+      if (acts.some((a) => a.url || a.tab || a.feedback || (a.trade && save))) {
         const row = el('div', 'cse-chat-actions');
         for (const a of acts) {
           if (a.url) {
@@ -2253,6 +2261,11 @@ export function initChatbot() {
                 addMsg(pick(lastStyle, 'Could not log the trade — try in the History tab.', 'Trade එක log කරන්න බැරි වුණා — History tab එකෙන් try කරන්න.', 'Log වුණේ නැහැ — History tab එකෙන් කරන්න.'), 'bot');
               }
             });
+            row.appendChild(b);
+          } else if (a.feedback) {
+            const b = el('button', 'cse-chat-act primary', a.label);
+            b.type = 'button';
+            b.dataset.feedback = a.feedback; // opened by core/feedback.js
             row.appendChild(b);
           } else if (a.tab) {
             const b = el('button', 'cse-chat-act', a.label + ' →');
@@ -2292,7 +2305,7 @@ export function initChatbot() {
       history.push({
         who,
         text,
-        actions: typeof msg === 'object' ? (msg.actions || []).filter((a) => a.tab || a.url) : [],
+        actions: typeof msg === 'object' ? (msg.actions || []).filter((a) => a.tab || a.url || a.feedback) : [],
         spark: typeof msg === 'object' && msg.spark ? msg.spark : null,
         ai: typeof msg === 'object' && !!msg.ai,
         t: Date.now(),
