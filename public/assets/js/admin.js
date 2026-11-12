@@ -285,9 +285,12 @@ async function uploadCrossingsPdf(e) {
       $('#crossSym').value = c.largestSymbol;
       $('#crossLargest').value = +(c.largestValue / 1e6).toFixed(2);
     }
+    // Rebuild the WhatsApp post right away so it includes the crossings.
+    const today = new Date(Date.now() + 5.5 * 3600_000).toISOString().slice(0, 10);
+    if (data.day === today) makeWa();
     const top = c.items.slice(0, 3).map((x) => `${x.symbol.split('.')[0]} Rs ${(x.value / 1e6).toFixed(1)} mn`).join(', ');
     st.innerHTML = `✓ Saved for <b>${data.day}</b>: ${c.items.length} crossing${c.items.length === 1 ? '' : 's'}, total Rs ${(c.value / 1e6).toFixed(1)} mn (${top}).`
-      + (noteDay && data.day < noteDay ? ` <b style="color:var(--neg)">This report is for an earlier day than the latest market page (${noteDay}).</b>` : ' Now tap <b>Make today\'s post</b>.');
+      + (noteDay && data.day < noteDay ? ` <b style="color:var(--neg)">This report is for an earlier day than the latest market page (${noteDay}).</b>` : ' The WhatsApp post below is being updated.');
   } catch (err) {
     st.textContent = err.message || 'Upload failed.';
   }
