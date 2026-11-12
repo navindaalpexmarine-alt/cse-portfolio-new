@@ -258,6 +258,42 @@ async function saveNote() {
   } catch { st.textContent = 'Cannot reach the server.'; }
 }
 
+async function uploadCrossingsPdf(e) {
+  const file = e.target.files?.[0];
+  e.target.value = '';
+  if (!file) return;
+  const st = $('#crossPdfStatus');
+  if (file.size > 700 * 1024) { st.textContent = 'This file is too large (max 700 KB).'; return; }
+  st.textContent = 'Reading the report…';
+  try {
+    const b64 = await new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result).split(',')[1] || '');
+      r.onerror = () => reject(new Error('Could not read the file.'));
+      r.readAsDataURL(file);
+    });
+    const res = await fetch('api/market?action=crossings-pdf', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'cse-portfolio', Accept: 'application/json' },
+      body: JSON.stringify({ pdf: b64 }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) { st.textContent = data.message || `Could not read the report (${res.status}).`; return; }
+    const c = data.crossings;
+    if (data.day === noteDay || !noteDay) {
+      $('#crossValue').value = +(c.value / 1e6).toFixed(2);
+      $('#crossSym').value = c.largestSymbol;
+      $('#crossLargest').value = +(c.largestValue / 1e6).toFixed(2);
+    }
+    const top = c.items.slice(0, 3).map((x) => `${x.symbol.split('.')[0]} Rs ${(x.value / 1e6).toFixed(1)} mn`).join(', ');
+    st.innerHTML = `✓ Saved for <b>${data.day}</b>: ${c.items.length} crossing${c.items.length === 1 ? '' : 's'}, total Rs ${(c.value / 1e6).toFixed(1)} mn (${top}).`
+      + (noteDay && data.day < noteDay ? ` <b style="color:var(--neg)">This report is for an earlier day than the latest market page (${noteDay}).</b>` : ' Now tap <b>Make today\'s post</b>.');
+  } catch (err) {
+    st.textContent = err.message || 'Upload failed.';
+  }
+}
+
+$('#crossPdf').addEventListener('change', uploadCrossingsPdf);
 $('#noteSave').addEventListener('click', saveNote);
 loadNote();
 $('#waMake').addEventListener('click', makeWa);
