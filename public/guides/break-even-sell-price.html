@@ -3,105 +3,132 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>How to calculate break-even sell price · CSE Portfolio Guides</title>
-<meta name="description" content="Step-by-step break-even sell price for CSE shares after buy and sell costs, with a worked example.">
+<title>How to calculate your break-even sell price on the CSE · CSE Portfolio Guides</title>
+<meta name="description" content="The exact price you must sell a CSE share at to recover what you paid, including the 1.12% buy and sell costs. Formula, worked examples and a quick reference table.">
 <meta name="robots" content="index, follow">
+<link rel="canonical" href="https://cse-portfolio-new.vercel.app/guides/break-even-sell-price">
+<meta property="og:title" content="How to calculate your break-even sell price on the CSE">
+<meta property="og:description" content="The exact price you must sell a CSE share at to recover what you paid, including the 1.12% buy and sell costs. Formula, worked examples and a quick reference table.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://cse-portfolio-new.vercel.app/guides/break-even-sell-price">
 <meta name="theme-color" content="#0B0F14">
 <link rel="icon" href="../assets/icons/icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="../assets/css/styles.css">
 <link rel="stylesheet" href="../assets/css/legal.css">
 <script src="../assets/js/theme-init.js"></script>
+<script type="application/ld+json">[{"@context": "https://schema.org", "@type": "Article", "headline": "How to calculate your break-even sell price on the CSE", "description": "The exact price you must sell a CSE share at to recover what you paid, including the 1.12% buy and sell costs. Formula, worked examples and a quick reference table.", "dateModified": "2026-11-12", "mainEntityOfPage": "https://cse-portfolio-new.vercel.app/guides/break-even-sell-price", "author": {"@type": "Organization", "name": "CSE Portfolio"}, "publisher": {"@type": "Organization", "name": "CSE Portfolio"}}, {"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "Is break-even the same as my average price?", "acceptedAnswer": {"@type": "Answer", "text": "No. Your average price is what you paid per share. Break-even is the price you must sell at so that, after paying the selling fee, you get back everything you spent including the buying fee. With 1.12% fees it is about 2.27% higher than your average purchase price."}}, {"@type": "Question", "name": "Do dividends change my break-even price?", "acceptedAnswer": {"@type": "Answer", "text": "A dividend you have already received is cash in your pocket, so some investors subtract it from their cost. The strict break-even price used in CSE Portfolio does not, so that it always shows the price at which the share itself pays you back."}}, {"@type": "Question", "name": "Why does the app show SELL when the price is above break-even?", "acceptedAnswer": {"@type": "Answer", "text": "In CSE Portfolio the label only means the current price is at or above your break-even, so selling now would not lose money after fees. It is a calculation, not advice to sell."}}]}]</script>
 </head>
 <body class="legal-page">
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="legal-header">
   <div class="wrap legal-header-inner">
-    <a class="brand" href="../">
+    <a class="brand" href="/">
       <img src="../assets/icons/icon-192.png" width="36" height="36" alt="" class="brand-icon">
       <span><span class="brand-title">CSE Portfolio</span><span class="brand-sub">Guides</span></span>
     </a>
     <nav class="legal-nav" aria-label="Site pages">
-      <a href="../">App</a>
-      <a href="index.html">Guides</a>
-      <a href="../about.html">About</a>
-      <a href="../privacy.html">Privacy</a>
-      <a href="../contact.html">Contact</a>
+      <a href="/">App</a>
+      <a href="/market">Market close</a>
+      <a href="./">Guides</a>
+      <a href="/about">About</a>
+      <a href="/contact">Contact</a>
     </nav>
   </div>
 </header>
 <main id="main" class="wrap legal-main">
 <article class="legal-card prose">
-  <p><a href="index.html">← All guides</a></p>
-  <h1>How to calculate break-even sell price</h1>
-  <p class="lead">
-    Break-even sell price is the market price at which selling leaves you roughly even
-    after buy costs already paid and sell costs still to pay. It is higher than your
-    purchase price when costs are positive.
-  </p>
-  <p class="note"><strong>Not investment advice.</strong> Illustrative maths only. Use your real contract notes and broker rates.</p>
+  <p><a href="./">← All guides</a></p>
+  <h1>How to calculate your break-even sell price on the CSE</h1>
+<p class="lead">Your break-even sell price is the market price at which selling your shares gives you back exactly what you paid for them, after the buying fee you already paid and the selling fee you will pay. Below this price, a sale loses money even if the price is above what you paid.</p>
+  <p class="note"><strong>Not investment advice.</strong> Illustrative maths using the standard 1.12% CSE transaction cost. Use your real contract notes for exact numbers.</p>
 
-  <h2>Idea in one sentence</h2>
-  <p>
-    You need the <em>net cash from the sale</em> to at least match the <em>total cash you spent to buy</em>
-    (for the shares you are selling).
-  </p>
+  <h2>The idea in one sentence</h2>
+  <p>The <em>cash you receive from the sale</em> must be at least the <em>cash you spent on the purchase</em>.</p>
 
-  <h2>Simple percentage model</h2>
-  <p>Assume the same percentage cost rate <em>c</em> on buy and on sell (e.g. 0.0112 for 1.12%).</p>
+  <h2>The formula</h2>
+  <p>Let <b>c</b> be the transaction cost as a decimal (0.0112 for 1.12%).</p>
   <ul>
-    <li>Buy cash out per share ≈ buy price × (1 + c)</li>
-    <li>Sell cash in per share ≈ sell price × (1 − c)</li>
-    <li>Set them equal: sell price × (1 − c) = buy price × (1 + c)</li>
-    <li>Therefore sell price ≈ buy price × (1 + c) / (1 − c)</li>
+    <li>Cash spent per share = buy price × (1 + c)</li>
+    <li>Cash received per share = sell price × (1 − c)</li>
+    <li>Break-even when they are equal: sell price × (1 − c) = buy price × (1 + c)</li>
   </ul>
-  <p>
-    With c = 1.12% (0.0112): factor ≈ 1.0112 / 0.9888 ≈ 1.0227.
-    So break-even is roughly <strong>2.27% above</strong> the buy price in this symmetric model —
-    not merely 1.12% above.
-  </p>
+  <p><b>Break-even sell price = buy price × (1 + c) ÷ (1 − c)</b></p>
+  <p>With c = 0.0112 the factor is 1.0112 ÷ 0.9888 = <b>1.02265</b>. So the break-even price is about <b>2.27% above</b> the price you paid.</p>
 
   <h2>Worked example</h2>
-  <p>You bought at LKR 100.00 with 1.12% total buy costs.</p>
-  <ul>
-    <li>True cost per share ≈ 100 × 1.0112 = LKR 101.12</li>
-    <li>Break-even sell price ≈ 100 × 1.0227 ≈ LKR 102.27</li>
-    <li>At LKR 102.27, sell net ≈ 102.27 × 0.9888 ≈ LKR 101.12</li>
-  </ul>
-  <p>
-    If the last trade is LKR 101.50 you might feel “up 1.5%” on the quote board while still
-    below break-even after costs.
-  </p>
+  <p>You bought 1,000 shares at Rs 48.50.</p>
+  <ol>
+    <li>Cash spent: 1,000 × 48.50 × 1.0112 = <b>Rs 49,043.20</b></li>
+    <li>Break-even price: 48.50 × 1.02265 = <b>Rs 49.60</b> (rounded up to the next price tick)</li>
+    <li>Check: selling 1,000 at Rs 49.60 gives 49,600 × 0.9888 = Rs 49,044.48, just above what you spent.</li>
+  </ol>
+  <p>If you sold at Rs 49.40, which looks like a 90-cent gain, you would receive 49,400 × 0.9888 = Rs 48,846.72, a <b>loss of Rs 196.48</b>.</p>
 
-  <h2>When the formula changes</h2>
+  <h2>When you bought at different prices</h2>
+  <p>Most people build a position in steps. Then the right starting point is your <b>total cash spent</b>, not any single price.</p>
+  <table>
+    <thead><tr><th>Purchase</th><th>Shares</th><th>Price</th><th>Cash spent (incl. 1.12%)</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>400</td><td>Rs 60.00</td><td>Rs 24,268.80</td></tr>
+      <tr><td>2</td><td>600</td><td>Rs 52.00</td><td>Rs 31,549.44</td></tr>
+      <tr><td><b>Total</b></td><td><b>1,000</b></td><td></td><td><b>Rs 55,818.24</b></td></tr>
+    </tbody>
+  </table>
+  <p>Break-even = total cash spent ÷ (shares × (1 − c)) = 55,818.24 ÷ (1,000 × 0.9888) = <b>Rs 56.45</b>. Your simple average purchase price is Rs 55.20, and the break-even is again about 2.27% above it. See <a href="average-cost-and-buying-more">average cost: what happens when you buy more</a> for how each new purchase moves this number.</p>
+
+  <h2>Quick reference table (1.12% each way)</h2>
+  <table>
+    <thead><tr><th>You paid</th><th>Break-even sell price</th><th>Difference</th></tr></thead>
+    <tbody>
+      <tr><td>Rs 10.00</td><td>Rs 10.23</td><td>+0.23</td></tr>
+      <tr><td>Rs 25.00</td><td>Rs 25.57</td><td>+0.57</td></tr>
+      <tr><td>Rs 50.00</td><td>Rs 51.13</td><td>+1.13</td></tr>
+      <tr><td>Rs 100.00</td><td>Rs 102.27</td><td>+2.27</td></tr>
+      <tr><td>Rs 250.00</td><td>Rs 255.66</td><td>+5.66</td></tr>
+      <tr><td>Rs 500.00</td><td>Rs 511.33</td><td>+11.33</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Selling only part of a holding</h2>
+  <p>If you sell some of your shares, the break-even price for the shares you keep does not change, because each share carries the same average cost. What changes is how much money you have tied up. Many investors find it useful to note the realised profit or loss on the part they sold separately, so it does not hide in the average.</p>
+
+  <h2>Things the simple formula leaves out</h2>
   <ul>
-    <li>Different buy vs sell rates → use each rate in the cash-out and cash-in legs.</li>
-    <li>Fixed fees → add them into total cash out / subtract from total cash in, then divide by quantity.</li>
-    <li>Partial sells → apply the same logic to the quantity you sell; keep average cost for the rest.</li>
-    <li>Dividends → optional: reduce effective cost by dividends received if you want an all-in view (be consistent).</li>
+    <li><b>Dividends received.</b> Cash dividends you already got improve your overall result, but they are not part of the share's price.</li>
+    <li><b>Rights and bonus issues.</b> After a bonus issue you own more shares at a lower cost each; after a rights issue you paid extra cash for new shares. Update your cost when these happen (see <a href="rights-issues-explained">rights issues</a> and <a href="bonus-issues-and-share-splits">bonus issues and splits</a>).</li>
+    <li><b>Price ticks.</b> Shares trade in fixed price steps, so the exact break-even may fall between two prices. Round up to be safe.</li>
+    <li><b>Very large trades</b> above Rs 100 million use a lower stepped fee (see <a href="cse-commission-explained">commission explained</a>).</li>
   </ul>
 
-  <h2>In CSE Portfolio</h2>
-  <p>
-    The app’s calculator is meant for this kind of check: set your commission rate, enter
-    buy details, and inspect break-even style outputs before you decide anything in the market.
-  </p>
+  <h2>Using it in CSE Portfolio</h2>
+  <p>For every holding the app shows your average cost, the break-even sell price (labelled B.E.S) and the gap between today's price and that level. The status label is purely arithmetic: at or above break-even it shows SELL, close to it NEAR, and below it WAIT. It never looks at whether a share is "cheap" or "expensive"; that judgement stays with you.</p>
+
+  <h2>Frequently asked questions</h2>
+  <h3>Is break-even the same as my average price?</h3>
+  <p>No. Your average price is what you paid per share. Break-even is the price you must sell at so that, after paying the selling fee, you get back everything you spent including the buying fee. With 1.12% fees it is about 2.27% higher than your average purchase price.</p>
+  <h3>Do dividends change my break-even price?</h3>
+  <p>A dividend you have already received is cash in your pocket, so some investors subtract it from their cost. The strict break-even price used in CSE Portfolio does not, so that it always shows the price at which the share itself pays you back.</p>
+  <h3>Why does the app show SELL when the price is above break-even?</h3>
+  <p>In CSE Portfolio the label only means the current price is at or above your break-even, so selling now would not lose money after fees. It is a calculation, not advice to sell.</p>
 
   <h2>Related guides</h2>
   <ul>
-    <li><a href="cse-commission-explained.html">CSE buy &amp; sell commission explained</a></li>
-    <li><a href="track-cse-shares.html">How to track your CSE shares</a></li>
+    <li><a href="cse-commission-explained">CSE buy and sell commission explained</a></li>
+    <li><a href="average-cost-and-buying-more">Average cost: what happens when you buy more</a></li>
+    <li><a href="common-cse-investor-mistakes">Common mistakes new CSE investors make</a></li>
   </ul>
-  <p class="legal-updated">Last updated: October 2026</p>
+  <p class="note">Track your own shares, break-even prices and XD dates for free in <a href="/">CSE Portfolio</a>, and get a short market summary every evening on our <a href="https://whatsapp.com/channel/0029Vb9Fn5V5kg7CmUkexe2t" target="_blank" rel="noopener">WhatsApp channel</a>.</p>
+  <p class="legal-updated">Last updated: November 2026. Rules, fees and tax rates change. Always confirm with the Colombo Stock Exchange, the SEC, the Inland Revenue Department and your stockbroker.</p>
 </article>
 </main>
 <footer class="app-footer">
   <div class="wrap">
-    <p><b>Not investment advice.</b> Always confirm with the CSE and your broker.</p>
+    <p><b>Not investment advice.</b> These guides explain how things work. They do not recommend any share. This site is not affiliated with the Colombo Stock Exchange.</p>
     <p class="footer-links">
-      <a href="../">App</a> · <a href="index.html">Guides</a> ·
-      <a href="../about.html">About</a> · <a href="../privacy.html">Privacy</a> ·
-      <a href="../contact.html">Contact</a>
+      <a href="/">App</a> · <a href="/market">Market close</a> · <a href="./">Guides</a> ·
+      <a href="https://whatsapp.com/channel/0029Vb9Fn5V5kg7CmUkexe2t" target="_blank" rel="noopener">WhatsApp channel</a> ·
+      <a href="/about">About</a> · <a href="/privacy">Privacy</a> · <a href="/contact">Contact</a> · <a href="/terms">Terms</a>
     </p>
   </div>
 </footer>
