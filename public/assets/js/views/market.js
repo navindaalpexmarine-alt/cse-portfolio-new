@@ -5,6 +5,7 @@
 import { cse } from '../core/api.js';
 import { state } from '../core/store.js';
 import { $, esc, fmt, fmtCompact, fmtInt } from '../core/utils.js';
+import { renderWorldStrip } from './world.js';
 
 function indexTick(label, d) {
   if (!d || d.value == null) return '';
@@ -24,6 +25,9 @@ export async function loadMarketOverview() {
     const status = d.marketStatus?.status;
     const aspiV = Number(d.aspiData?.value);
     if (aspiV > 0) state.aspi = { value: aspiV, pct: Number(d.aspiData?.percentage) || 0, at: Date.now() }; // used by daily snapshots + Insights
+    const snpV = Number(d.snpData?.value);
+    if (snpV > 0) state.snp = { value: snpV, pct: Number(d.snpData?.percentage) || 0, at: Date.now() };
+    renderWorldStrip();
     const sum = d.marketSummery || {};
     const open = /trading|open/i.test(status || '') && !/close/i.test(status || '');
     el.innerHTML = [

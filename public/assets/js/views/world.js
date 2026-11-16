@@ -5,18 +5,21 @@
  * The widget only loads when the panel scrolls into view, so the tab stays fast, and it is
  * re-mounted when the app theme changes. Information only — no recommendations.
  */
-import { $ } from '../core/utils.js';
+import { $, fmt } from '../core/utils.js';
+import { state } from '../core/store.js';
 
 const SCRIPT = 'https://s3.tradingview.com/external-embedding/embed-widget-market-overview.js';
 
 const TABS = [
   {
-    title: 'Indices',
+    title: 'CSE vs World',
     symbols: [
+      { s: 'CSELK:ASI', d: 'ASPI (Sri Lanka)' },
+      { s: 'CSELK:S&PSL20', d: 'S&P SL20 (Sri Lanka)' },
+      { s: 'BSE:SENSEX', d: 'Sensex (India)' },
       { s: 'FOREXCOM:SPXUSD', d: 'S&P 500 (US)' },
       { s: 'FOREXCOM:NSXUSD', d: 'Nasdaq 100 (US)' },
       { s: 'FOREXCOM:DJI', d: 'Dow Jones (US)' },
-      { s: 'BSE:SENSEX', d: 'Sensex (India)' },
       { s: 'FOREXCOM:UKXGBP', d: 'FTSE 100 (UK)' },
       { s: 'INDEX:NKY', d: 'Nikkei 225 (Japan)' },
     ],
@@ -80,8 +83,23 @@ function mount() {
   box.firstElementChild.appendChild(s);
 }
 
+/* Today's CSE move, from our own live data, so it can be compared with the rows below
+   even if the chart provider has no Sri Lankan data. */
+const chip = (label, d) => (d && d.value > 0
+  ? `<span class="world-chip"><b>${label}</b> ${fmt(d.value)} <span class="${d.pct >= 0 ? 't-pos' : 't-neg'}">${d.pct >= 0 ? '▲ +' : '▼ −'}${Math.abs(d.pct).toFixed(2)}%</span></span>`
+  : '');
+
+export function renderWorldStrip() {
+  const el = $('#worldCse');
+  if (!el) return;
+  const html = chip('🇱🇰 ASPI', state.aspi) + chip('S&amp;P SL20', state.snp);
+  el.innerHTML = html ? `<span class="world-chip-k">Today on the CSE</span>${html}` : '';
+  el.hidden = !html;
+}
+
 /** Called when the Fundamentals tab opens: load the widget once the panel is on screen. */
 export function showWorld() {
+  renderWorldStrip();
   const panel = $('#worldPanel');
   if (!panel || mountedTheme === theme()) return;
   if (!('IntersectionObserver' in window)) { mount(); return; }
