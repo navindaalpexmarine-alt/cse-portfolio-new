@@ -566,10 +566,22 @@
     <div class="panel" id="worldPanel">
       <div class="panel-head">
         <h2>🌍 World markets</h2>
-        <span class="chip">Indices · Oil &amp; gold · LKR rates</span>
+        <span class="chip">CSE vs world · Oil &amp; gold · LKR rates</span>
       </div>
+      <div class="world-cse" id="worldCse" hidden></div>
       <div class="world-box" id="worldBox"><div class="empty">Loading world markets…</div></div>
       <p class="hint world-note">Live data by <a href="https://www.tradingview.com/markets/" target="_blank" rel="noopener nofollow">TradingView</a> (may be delayed). Tap a row to see its chart. For information only — not investment advice.</p>
+      <details class="world-times">
+        <summary>When do these markets trade? (Sri Lanka time)</summary>
+        <ul>
+          <li><b>Colombo (CSE):</b> 9:30 am – 2:30 pm</li>
+          <li><b>India (Sensex):</b> 9:15 am – 3:30 pm, the same hours as us</li>
+          <li><b>Japan (Nikkei):</b> about 5:30 am – 12:00 noon</li>
+          <li><b>London (FTSE 100):</b> about 1:30 pm – 10:00 pm</li>
+          <li><b>New York (S&amp;P 500, Nasdaq, Dow):</b> about 8:00 pm – 2:30 am (7:00 pm – 1:30 am from mid-March to early November)</li>
+        </ul>
+        <p>So a big move in New York happens while Colombo is closed, and shows up, if at all, when the CSE opens the next morning. India trades at the same time as us, so you can compare the two live. The CSE is mostly driven by local news, interest rates and company results, so it often does not follow world markets closely.</p>
+      </details>
     </div>
 
     <form class="stock-picker" id="fundForm">
