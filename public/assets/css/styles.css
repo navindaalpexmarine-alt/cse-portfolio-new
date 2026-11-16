@@ -383,6 +383,13 @@ input.cell.live { color: var(--gold); font-weight: 600; }
 .world-box .world-widget, .world-box .tradingview-widget-container__widget { height: 100%; width: 100%; }
 .world-box .empty { height: 100%; display: grid; place-items: center; }
 .world-note { margin: 10px 0 0; font-size: 12px; }
+.world-cse { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin: 0 0 10px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel-2); font-size: 14px; }
+.world-chip-k { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.world-chip { white-space: nowrap; }
+.world-times { margin-top: 8px; font-size: 13px; color: var(--muted); }
+.world-times summary { cursor: pointer; color: var(--ink); font-weight: 600; }
+.world-times ul { margin: 8px 0; padding-left: 18px; }
+.world-times p { margin: 6px 0 0; }
 .movers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
 .movers h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: 8px; }
 .mover-list { list-style: none; display: grid; gap: 4px; }
