@@ -381,7 +381,7 @@ async function checkXdReminders() {
   toast(`💰 ${msgs.join(' · ')}`, { ms: 8000 });
   try {
     if (state.settings.notify && 'Notification' in window && Notification.permission === 'granted') {
-      new Notification('CSE Portfolio — XD reminder', { body: msgs.join('\n'), icon: 'assets/icons/icon-192.png', tag: 'cse-xd' });
+      new Notification('SL Market Watch — XD reminder', { body: msgs.join('\n'), icon: 'assets/icons/icon-192.png', tag: 'cse-xd' });
     }
   } catch { /* some mobile browsers only allow notifications from a service worker */ }
 }
@@ -554,7 +554,7 @@ function drawShareCard(showAmounts, logo = null) {
     g.drawImage(logo, 90, 96, 100, 100);
     g.restore();
   }
-  g.fillStyle = '#D4AF37'; g.font = '700 54px Georgia, serif'; g.fillText('CSE Portfolio', tx, 150);
+  g.fillStyle = '#D4AF37'; g.font = '700 54px Georgia, serif'; g.fillText('SL Market Watch', tx, 150);
   g.fillStyle = '#8B95A8'; g.font = '500 32px Inter, system-ui, sans-serif';
   g.fillText(new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }), tx, 196);
   const W = 640; // text column; the QR code sits bottom-right
@@ -600,7 +600,7 @@ async function shareNow() {
   const file = new File([blob], 'cse-portfolio.png', { type: 'image/png' });
   try {
     if (navigator.canShare?.({ files: [file] })) {
-      await navigator.share({ files: [file], title: 'My CSE portfolio', text: `Tracked with CSE Portfolio — ${SHARE_URL()}` });
+      await navigator.share({ files: [file], title: 'My CSE portfolio', text: `Tracked with SL Market Watch — ${SHARE_URL()}` });
       return;
     }
   } catch (err) { if (err?.name === 'AbortError') return; }

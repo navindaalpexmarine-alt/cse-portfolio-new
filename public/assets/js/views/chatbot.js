@@ -1,5 +1,5 @@
 /**
- * CSE Portfolio — Smart help chatbot v2
+ * SL Market Watch — Smart help chatbot v2
  * English / සිංහල / Singlish / mix (replies follow the user's style).
  *
  * What it can do:
@@ -1009,9 +1009,9 @@ const FAQ = [
   {
     re: /(about|what is|mokakda|මොකද).*(this )?(app|site|website|cse portfolio)|cse portfolio|මේක මොකද|app එක මොකද|website එක මොකද|meka mokakda/,
     reply: (st) => R(pick(st,
-      'CSE Portfolio is a free CSE tool: track shares, buy/sell calculator with commission, dividends, news, fundamentals & charts. Not investment advice.',
-      'CSE Portfolio = CSE investors ලට free tool එකක්. Shares track, calculator, dividends, news, charts. Investment advice නෙවෙයි.',
-      'CSE Portfolio කියන්නේ free CSE tool එකක් — portfolio track, calculator (commission එක්ක), dividends, news. Advice නෙවෙයි, numbers organise කරන්න.'),
+      'SL Market Watch is a free CSE tool: track shares, buy/sell calculator with commission, dividends, news, fundamentals & charts. Not investment advice.',
+      'SL Market Watch = CSE investors ලට free tool එකක්. Shares track, calculator, dividends, news, charts. Investment advice නෙවෙයි.',
+      'SL Market Watch කියන්නේ free CSE tool එකක් — portfolio track, calculator (commission එක්ක), dividends, news. Advice නෙවෙයි, numbers organise කරන්න.'),
     { chips: [chip('What can you do?'), chip('Is market open?')] }),
   },
   {
@@ -1086,9 +1086,9 @@ const FAQ = [
   {
     re: /whats ?app|channel|චැනල්|වට්ස්/,
     reply: (st) => R(pick(st,
-      'Follow our WhatsApp channel “CSE Market Watch” for site updates and daily market news.',
-      'අපේ WhatsApp channel එක “CSE Market Watch” — site updates සහ market news එනවා.',
-      'WhatsApp channel එක “CSE Market Watch” follow කරන්න — updates සහ market news.'),
+      'Follow our WhatsApp channel “SL Market Watch” for site updates and daily market news.',
+      'අපේ WhatsApp channel එක “SL Market Watch” — site updates සහ market news එනවා.',
+      'WhatsApp channel එක “SL Market Watch” follow කරන්න — updates සහ market news.'),
     { actions: [{ label: 'Open WhatsApp channel', url: 'https://whatsapp.com/channel/0029Vb9Fn5V5kg7CmUkexe2t' }] }),
   },
   {
@@ -2491,7 +2491,7 @@ export function initChatbot() {
     toast(plain(txt).replace(/\n/g, ' · '), { ms: 6000 });
     try {
       if (state.settings?.notify && 'Notification' in window && Notification.permission === 'granted') {
-        new Notification('CSE Portfolio — price alert', { body: plain(txt), icon: 'assets/icons/icon-192.png', tag: 'cse-chat-alert' });
+        new Notification('SL Market Watch — price alert', { body: plain(txt), icon: 'assets/icons/icon-192.png', tag: 'cse-chat-alert' });
       }
     } catch { /* some mobile browsers only allow notifications from a service worker */ }
     if (!msgs.childElementCount && history.length) restore();
