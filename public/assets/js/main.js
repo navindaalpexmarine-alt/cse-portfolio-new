@@ -1,5 +1,5 @@
 /**
- * CSE Portfolio – application entry point.
+ * SL Market Watch – application entry point.
  *
  * Start-up: theme -> check the session (sign-in screen if needed) -> download
  * the user's portfolio from their account -> boot the app (router, live

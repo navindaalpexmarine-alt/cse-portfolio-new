@@ -174,7 +174,7 @@ function renderFeedback(meta) {
       </div>
       <p class="fb-msg">${esc(i.message)}</p>
       <div class="fb-actions">
-        ${i.email ? `<a class="btn" href="mailto:${esc(i.email)}?subject=${encodeURIComponent('Your feedback on CSE Portfolio')}">Reply to ${esc(i.email)}</a>` : '<span class="hint">No email given</span>'}
+        ${i.email ? `<a class="btn" href="mailto:${esc(i.email)}?subject=${encodeURIComponent('Your feedback on SL Market Watch')}">Reply to ${esc(i.email)}</a>` : '<span class="hint">No email given</span>'}
         <button class="btn" type="button" data-fb-read="${i.read ? 'false' : 'true'}">${i.read ? 'Mark unread' : 'Mark read'}</button>
         <button class="btn" type="button" data-fb-del>Delete</button>
       </div>
