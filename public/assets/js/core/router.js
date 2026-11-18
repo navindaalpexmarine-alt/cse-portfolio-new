@@ -90,7 +90,7 @@ function activate(id, params = null) {
   if (view.show) view.show(params);
   else view.render?.();
 
-  document.title = `${$(`#tab-${id}`)?.textContent.trim() || 'CSE'} · CSE Portfolio`;
+  document.title = `${$(`#tab-${id}`)?.textContent.trim() || 'CSE'} · SL Market Watch`;
 }
 
 /** Navigate to a section, optionally passing params (e.g. { sym: 'SAMP.N0000' }). */

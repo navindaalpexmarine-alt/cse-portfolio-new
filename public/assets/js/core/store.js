@@ -241,7 +241,7 @@ export function exportBackup() {
 /** Validates + applies a backup object. Throws with a readable message. */
 export function importBackup(obj) {
   if (!obj || obj.app !== 'cse-portfolio' || !obj.data || typeof obj.data !== 'object') {
-    throw new Error('This file is not a CSE Portfolio backup.');
+    throw new Error('This file is not a SL Market Watch backup.');
   }
   if (!Array.isArray(obj.data.holdings)) throw new Error('Backup has no holdings list.');
   applyData({ ...obj.data, alertSeen: {} });

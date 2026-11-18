@@ -67,7 +67,7 @@ function checkPriceAlerts() {
   toast(msgs.slice(0, 3).join(' · '), { ms: 5000 });
   try {
     if (state.settings.notify && 'Notification' in window && Notification.permission === 'granted') {
-      new Notification('CSE Portfolio', { body: msgs.join('\n'), icon: 'assets/icons/icon-192.png', tag: 'cse-signal' });
+      new Notification('SL Market Watch', { body: msgs.join('\n'), icon: 'assets/icons/icon-192.png', tag: 'cse-signal' });
     }
   } catch { /* some mobile browsers only allow notifications from a service worker */ }
 }

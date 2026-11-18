@@ -95,7 +95,7 @@ export function showRecoveryCode(code, email = '') {
     try { await navigator.clipboard.writeText(code); toast('Recovery code copied'); } catch { toast('Copy failed — select the code and copy it manually', { error: true }); }
   };
   $('#recoveryDownloadBtn', dlg).onclick = () => {
-    const text = `CSE Portfolio — account recovery code\r\n\r\nAccount: ${email}\r\nRecovery code: ${code}\r\nCreated: ${new Date().toLocaleString()}\r\n\r\nUse this code on the sign-in page ("Forgot password?") to set a new password.\r\nKeep it private. A new code replaces this one.\r\n`;
+    const text = `SL Market Watch — account recovery code\r\n\r\nAccount: ${email}\r\nRecovery code: ${code}\r\nCreated: ${new Date().toLocaleString()}\r\n\r\nUse this code on the sign-in page ("Forgot password?") to set a new password.\r\nKeep it private. A new code replaces this one.\r\n`;
     const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([text], { type: 'text/plain' })), download: 'cse-portfolio-recovery-code.txt' });
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
