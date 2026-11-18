@@ -1,6 +1,6 @@
 {
-  "name": "CSE Portfolio · Share Tracker",
-  "short_name": "CSE Portfolio",
+  "name": "SL Market Watch · Share Tracker",
+  "short_name": "SL Market",
   "description": "Track Colombo Stock Exchange shares: live prices, break-even sell, dividends, news, fundamentals and technicals.",
   "id": "./",
   "start_url": "./#portfolio",
